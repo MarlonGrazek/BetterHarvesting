@@ -1,0 +1,11 @@
+name: BetterHarvesting
+version: '${project.version}'
+main: com.marlongrazek.betterharvesting.main.Main
+api-version: 1.18
+author: MarlonGrazek
+
+commands:
+     bhsettings:
+          description: opens the settings
+          aliases:
+            - bhs
