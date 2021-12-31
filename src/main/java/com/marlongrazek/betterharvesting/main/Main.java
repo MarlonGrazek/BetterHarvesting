@@ -5,6 +5,7 @@ import com.marlongrazek.datafile.DataFile;
 import com.marlongrazek.betterharvesting.Recipes;
 import com.marlongrazek.betterharvesting.events.*;
 import com.marlongrazek.ui.History;
+import de.jeff_media.updatechecker.UpdateChecker;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
@@ -43,6 +44,14 @@ public class Main extends JavaPlugin {
         pm.registerEvents(new EVNshearPlants(), this);
 
         Bukkit.getServer().getConsoleSender().sendMessage(getDataFile("config").get("prefix") + " §fsuccessfully enabled");
+
+        int spigotID = 98816;
+        UpdateChecker.init(this, spigotID)
+                .setDownloadLink("https://www.spigotmc.org/resources/better-harvesting.98816/")
+                .setDownloadLink("https://www.paypal.com/donate?hosted_button_id=X7CSZTZE3K9LW")
+                .setChangelogLink(spigotID)
+                .checkEveryXHours(24)
+                .checkNow();
     }
 
     public void setUp() {
