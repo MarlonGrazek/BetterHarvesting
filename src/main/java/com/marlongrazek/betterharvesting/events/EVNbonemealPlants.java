@@ -58,7 +58,7 @@ public class EVNbonemealPlants implements Listener {
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (e.getItem() == null) return;
         if (e.getItem().getType() != Material.BONE_MEAL) return;
-        if (e.getHand() == EquipmentSlot.HAND && e.getHand() == EquipmentSlot.OFF_HAND) return;
+        if (e.getHand() != EquipmentSlot.HAND && e.getHand() == EquipmentSlot.OFF_HAND) return;
 
         List<Material> bonemealableBlocks = new ArrayList<>();
         for (BonemealableBlock block : BonemealableBlock.values()) bonemealableBlocks.add(block.getMaterial());
@@ -95,6 +95,20 @@ public class EVNbonemealPlants implements Listener {
                 if (currentBlock.getType() == Material.AIR) currentBlock.setType(material);
                 else break;
             }
+        }
+
+        else if(block.getType() == Material.DEAD_BUSH) {
+
+            List<Material> saplings = Arrays.asList(Material.ACACIA_SAPLING, Material.AZALEA, Material.BIRCH_SAPLING,
+                    Material.DARK_OAK_SAPLING, Material.FLOWERING_AZALEA, Material.JUNGLE_SAPLING, Material.OAK_SAPLING,
+                    Material.SPRUCE_SAPLING);
+
+            Random random = new Random();
+
+            Material sapling = saplings.get(random.nextInt(saplings.size()));
+            block.setType(sapling);
+            spawnParticle(player, block.getLocation());
+            if(player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
         }
 
         // nether warts
