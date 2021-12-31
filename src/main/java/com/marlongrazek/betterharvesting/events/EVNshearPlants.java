@@ -94,6 +94,6 @@ public class EVNshearPlants implements Listener {
         else block.setType(shearableBlock.getNewMaterial());
 
         player.playSound(block.getLocation(), Sound.ENTITY_SHEEP_SHEAR, 1, 1);
-        shearableBlock.drops.forEach(drop -> block.getWorld().dropItemNaturally(block.getLocation(), drop));
+        shearableBlock.getDrops().forEach(drop -> block.getWorld().dropItemNaturally(block.getLocation(), drop));
     }
 }

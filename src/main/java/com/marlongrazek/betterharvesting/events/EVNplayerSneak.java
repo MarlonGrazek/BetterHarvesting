@@ -3,7 +3,6 @@ package com.marlongrazek.betterharvesting.events;
 import com.marlongrazek.betterharvesting.main.Main;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.type.Sapling;
@@ -12,7 +11,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 
-import java.util.Arrays;
 import java.util.Random;
 
 public class EVNplayerSneak implements Listener {

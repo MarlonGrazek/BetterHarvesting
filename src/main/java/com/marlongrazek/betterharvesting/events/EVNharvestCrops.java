@@ -66,6 +66,8 @@ public class EVNharvestCrops implements Listener {
         // crops
         else if (block.getBlockData() instanceof Ageable) {
 
+            if(block.getType() == Material.SWEET_BERRY_BUSH) return;
+
             Ageable crop = (Ageable) e.getClickedBlock().getBlockData();
             if (crop.getAge() != crop.getMaximumAge()) return;
 
@@ -75,16 +77,24 @@ public class EVNharvestCrops implements Listener {
 
             boolean removedSeed = false;
             for (ItemStack drop : drops) {
-                if ((drop.getType() == Material.POTATO || drop.getType() == Material.CARROT || drop.getType() == Material.BEETROOT_SEEDS
-                        || drop.getType() == Material.WHEAT_SEEDS || drop.getType() == Material.NETHER_WART) && !removedSeed) {
-                    drop.setAmount(drop.getAmount() - 1);
-                    removedSeed = true;
+
+                if (drop.getType() == Material.AIR) drops.remove(drop);
+
+                switch (drop.getType()) {
+                    case POTATO, CARROT, BEETROOT_SEEDS, WHEAT_SEEDS, NETHER_WART, COCOA_BEANS, MELON_SEEDS, PUMPKIN_SEEDS -> {
+                        if(!removedSeed) {
+                            drop.setAmount(drop.getAmount() - 1);
+                            removedSeed = true;
+                        }
+                    }
                 }
 
                 if (drop.getAmount() > 0)
                     e.getClickedBlock().getWorld().dropItemNaturally(e.getClickedBlock().getLocation(), drop);
             }
-            e.getClickedBlock().setType(e.getClickedBlock().getType());
+
+            crop.setAge(0);
+            block.setBlockData(crop);
         }
     }
 }

@@ -19,7 +19,7 @@ public class EVNbonemealPlants implements Listener {
     private enum BonemealableBlock {
 
         POPPY, DANDELION, BLUE_ORCHID, ALLIUM, AZURE_BLUET, RED_TULIP, ORANGE_TULIP, WHITE_TULIP, PINK_TULIP, OXEYE_DAISY,
-        CORNFLOWER, LILY_OF_THE_VALLEY, NETHER_SPROUTS, AZALEA_LEAVES, DEAD_BUSH;
+        CORNFLOWER, LILY_OF_THE_VALLEY, NETHER_SPROUTS, AZALEA_LEAVES;
 
         private Material material;
         private Material newMaterial;
