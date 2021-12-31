@@ -58,7 +58,7 @@ public class EVNbonemealPlants implements Listener {
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (e.getItem() == null) return;
         if (e.getItem().getType() != Material.BONE_MEAL) return;
-        if (e.getHand() != EquipmentSlot.HAND && e.getHand() == EquipmentSlot.OFF_HAND) return;
+        if (e.getHand() != EquipmentSlot.HAND) return;
 
         List<Material> bonemealableBlocks = new ArrayList<>();
         for (BonemealableBlock block : BonemealableBlock.values()) bonemealableBlocks.add(block.getMaterial());
@@ -97,6 +97,7 @@ public class EVNbonemealPlants implements Listener {
             }
         }
 
+        // dead bush
         else if(block.getType() == Material.DEAD_BUSH) {
 
             List<Material> saplings = Arrays.asList(Material.ACACIA_SAPLING, Material.AZALEA, Material.BIRCH_SAPLING,

@@ -4,7 +4,9 @@ import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
+import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.type.Candle;
 import org.bukkit.block.data.type.SeaPickle;
 import org.bukkit.entity.Player;
@@ -61,6 +63,37 @@ public class EVNharvestCrops implements Listener {
 
             if (player.getGameMode() != GameMode.CREATIVE || !player.getInventory().contains(block.getType()))
                 player.getInventory().addItem(new ItemStack(block.getType()));
+        }
+
+        else if(block.getType() == Material.CARVED_PUMPKIN) {
+
+            if(e.getItem() == null || e.getItem().getType() != Material.TORCH) return;
+            e.setCancelled(true);
+
+            BlockFace face = ((Directional) block.getBlockData()).getFacing();
+            block.setType(Material.JACK_O_LANTERN);
+
+            Directional directional = (Directional) block.getBlockData();
+            directional.setFacing(face);
+            block.setBlockData(directional);
+
+            if(player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+        }
+
+        else if(block.getType() == Material.JACK_O_LANTERN) {
+
+            if(e.getItem() != null) return;
+            e.setCancelled(true);
+
+            BlockFace face = ((Directional) block.getBlockData()).getFacing();
+            block.setType(Material.CARVED_PUMPKIN);
+
+            Directional directional = (Directional) block.getBlockData();
+            directional.setFacing(face);
+            block.setBlockData(directional);
+
+            if (player.getGameMode() != GameMode.CREATIVE || !player.getInventory().contains(new ItemStack(Material.TORCH)))
+                player.getInventory().addItem(new ItemStack(Material.TORCH));
         }
 
         // crops
