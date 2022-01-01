@@ -48,7 +48,7 @@ public class Main extends JavaPlugin {
         int spigotID = 98816;
         UpdateChecker.init(this, spigotID)
                 .setDownloadLink("https://www.spigotmc.org/resources/better-harvesting.98816/")
-                .setDownloadLink("https://www.paypal.com/donate?hosted_button_id=X7CSZTZE3K9LW")
+                .setDonationLink("https://www.paypal.com/donate?hosted_button_id=X7CSZTZE3K9LW")
                 .setChangelogLink(spigotID)
                 .checkEveryXHours(24)
                 .checkNow();

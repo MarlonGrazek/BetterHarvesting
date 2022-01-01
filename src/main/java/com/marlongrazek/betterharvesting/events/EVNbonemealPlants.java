@@ -4,7 +4,6 @@ import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
-import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.MultipleFacing;
 import org.bukkit.block.data.type.Leaves;
 import org.bukkit.entity.Player;
@@ -73,8 +72,10 @@ public class EVNbonemealPlants implements Listener {
         // sugar cane, cactus
         if (block.getType() == Material.SUGAR_CANE || block.getType() == Material.CACTUS) {
 
-            int countHeight = block.getLocation().getBlockY();
-            int startHeight = -1000;
+            e.setCancelled(true);
+
+            Location location = block.getLocation();
+            Block currentBlock = null;
 
             Material material = null;
             switch (block.getType()) {
@@ -82,26 +83,30 @@ public class EVNbonemealPlants implements Listener {
                 case CACTUS -> material = Material.CACTUS;
             }
 
-            while (startHeight == -1000) {
-                Block startBlock = new Location(block.getWorld(), block.getX(), countHeight, block.getZ()).getBlock();
-                if (startBlock.getType() == material) countHeight++;
-                else startHeight = countHeight;
+            while (currentBlock == null) {
+                if (location.getBlock().getType() == material) location.setY(location.getY() + 1);
+                else currentBlock = location.getBlock();
             }
 
-            if (new Location(block.getWorld(), block.getX(), startHeight, block.getZ()).getBlock().getType() == Material.AIR) {
+            if(currentBlock.getType() == Material.AIR) {
                 spawnParticle(player, block.getLocation());
-                if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+                player.playSound(player.getLocation(), Sound.ITEM_BONE_MEAL_USE, 1, 1);
+                if(player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
             }
 
-            for (int i = startHeight; i < startHeight + strength; i++) {
-                Block currentBlock = new Location(block.getWorld(), block.getX(), i, block.getZ()).getBlock();
-                if (currentBlock.getType() == Material.AIR) currentBlock.setType(material);
-                else break;
+            int maxHeight = currentBlock.getY() + strength;
+            while (currentBlock.getY() < maxHeight) {
+                if(currentBlock.getType() == Material.AIR) {
+                    currentBlock.setType(material);
+                    currentBlock = currentBlock.getRelative(BlockFace.UP);
+                } else break;
             }
         }
 
         // vine
         else if (block.getType() == Material.VINE) {
+
+            e.setCancelled(true);
 
             Location location = block.getLocation();
             Block startBlock = null;
@@ -109,14 +114,14 @@ public class EVNbonemealPlants implements Listener {
             faces.removeIf(face -> face == BlockFace.UP);
 
             while (startBlock == null) {
-                if (location.getBlock().getType() == Material.VINE)
-                    location.setY(location.getY() - 1);
+                if (location.getBlock().getType() == Material.VINE) location.setY(location.getY() - 1);
                 else startBlock = location.getBlock();
             }
 
             if (startBlock.getType() == Material.AIR) {
                 spawnParticle(player, block.getLocation());
-                if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+                player.playSound(player.getLocation(), Sound.ITEM_BONE_MEAL_USE, 1, 1);
+                if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
             }
 
             int minHeight = startBlock.getY() - strength;
@@ -134,6 +139,8 @@ public class EVNbonemealPlants implements Listener {
         // dead bush
         else if (block.getType() == Material.DEAD_BUSH) {
 
+            e.setCancelled(true);
+
             List<Material> saplings = Arrays.asList(Material.ACACIA_SAPLING, Material.AZALEA, Material.BIRCH_SAPLING,
                     Material.DARK_OAK_SAPLING, Material.FLOWERING_AZALEA, Material.JUNGLE_SAPLING, Material.OAK_SAPLING,
                     Material.SPRUCE_SAPLING);
@@ -143,7 +150,8 @@ public class EVNbonemealPlants implements Listener {
             Material sapling = saplings.get(random.nextInt(saplings.size()));
             block.setType(sapling);
             spawnParticle(player, block.getLocation());
-            if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+            player.playSound(player.getLocation(), Sound.ITEM_BONE_MEAL_USE, 1, 1);
+            if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
         }
 
         // nether warts
@@ -166,11 +174,14 @@ public class EVNbonemealPlants implements Listener {
             block.setBlockData(crop);
 
             spawnParticle(player, block.getLocation());
-            if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+            player.playSound(player.getLocation(), Sound.ITEM_BONE_MEAL_USE, 1, 1);
+            if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
         }
 
         // dirt, netherrack
         else if (block.getType() == Material.DIRT || block.getType() == Material.NETHERRACK) {
+
+            e.setCancelled(true);
 
             Random random = new Random();
             int color = random.nextInt(2);
@@ -192,9 +203,14 @@ public class EVNbonemealPlants implements Listener {
 
                     if (material == null || randomInt > 100 / chance) continue;
                     currentBlock.setType(material);
-                    spawnParticle(player, currentBlock.getLocation());
+                    Location particleLocation = currentBlock.getLocation();
+                    particleLocation.setY(particleLocation.getY() + 0.5);
+                    spawnParticle(player, particleLocation);
                 }
             }
+
+            player.playSound(player.getLocation(), Sound.ITEM_BONE_MEAL_USE, 1, 1);
+            if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
         }
 
         // bonemealable blocks
@@ -225,7 +241,8 @@ public class EVNbonemealPlants implements Listener {
                 bonemealableBlock.drops.forEach(drop -> block.getWorld().dropItemNaturally(block.getLocation(), drop));
 
             spawnParticle(player, block.getLocation());
-            if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+            player.playSound(player.getLocation(), Sound.ITEM_BONE_MEAL_USE, 1, 1);
+            if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
         }
     }
 

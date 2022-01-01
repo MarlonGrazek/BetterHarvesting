@@ -1,6 +1,5 @@
 package com.marlongrazek.betterharvesting.events;
 
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -19,7 +18,6 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class EVNharvestCrops implements Listener {
 
@@ -36,6 +34,11 @@ public class EVNharvestCrops implements Listener {
 
             if (e.getItem() != null) return;
             if (e.getHand() != EquipmentSlot.HAND) return;
+
+            e.setCancelled(true);
+
+            if (player.getGameMode() != GameMode.CREATIVE || !player.getInventory().contains(block.getType()))
+                player.getInventory().addItem(new ItemStack(block.getType(), 1));
 
             // sea pickle
             if (block.getBlockData() instanceof SeaPickle) {
@@ -62,14 +65,13 @@ public class EVNharvestCrops implements Listener {
 
                 player.playSound(player.getLocation(), Sound.BLOCK_CANDLE_BREAK, 1, 1);
             }
-
-            if (player.getGameMode() != GameMode.CREATIVE || !player.getInventory().contains(block.getType()))
-                player.getInventory().addItem(new ItemStack(block.getType()));
         }
 
-        else if(block.getType() == Material.CARVED_PUMPKIN) {
+        // pumpkin to jack o lantern
+        else if (block.getType() == Material.CARVED_PUMPKIN) {
 
-            if(e.getItem() == null || e.getItem().getType() != Material.TORCH) return;
+            if (e.getItem() == null || e.getItem().getType() != Material.TORCH) return;
+
             e.setCancelled(true);
 
             BlockFace face = ((Directional) block.getBlockData()).getFacing();
@@ -79,12 +81,14 @@ public class EVNharvestCrops implements Listener {
             directional.setFacing(face);
             block.setBlockData(directional);
 
-            if(player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+            if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
         }
 
-        else if(block.getType() == Material.JACK_O_LANTERN) {
+        // jack o lantern to pumpkin
+        else if (block.getType() == Material.JACK_O_LANTERN) {
 
-            if(e.getItem() != null) return;
+            if (e.getItem() != null) return;
+
             e.setCancelled(true);
 
             BlockFace face = ((Directional) block.getBlockData()).getFacing();
@@ -94,6 +98,7 @@ public class EVNharvestCrops implements Listener {
             directional.setFacing(face);
             block.setBlockData(directional);
 
+            player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE, 1, 0.8F);
             if (player.getGameMode() != GameMode.CREATIVE || !player.getInventory().contains(new ItemStack(Material.TORCH)))
                 player.getInventory().addItem(new ItemStack(Material.TORCH));
         }
@@ -101,7 +106,7 @@ public class EVNharvestCrops implements Listener {
         // crops
         else if (block.getBlockData() instanceof Ageable) {
 
-            if(block.getType() == Material.SWEET_BERRY_BUSH) return;
+            if (block.getType() == Material.SWEET_BERRY_BUSH) return;
 
             Ageable crop = (Ageable) e.getClickedBlock().getBlockData();
             if (crop.getAge() != crop.getMaximumAge()) return;
@@ -117,7 +122,7 @@ public class EVNharvestCrops implements Listener {
 
                 switch (drop.getType()) {
                     case POTATO, CARROT, BEETROOT_SEEDS, WHEAT_SEEDS, NETHER_WART, COCOA_BEANS, MELON_SEEDS, PUMPKIN_SEEDS -> {
-                        if(!removedSeed) {
+                        if (!removedSeed) {
                             drop.setAmount(drop.getAmount() - 1);
                             removedSeed = true;
                         }
@@ -130,6 +135,7 @@ public class EVNharvestCrops implements Listener {
 
             crop.setAge(0);
             block.setBlockData(crop);
+            player.playSound(player.getLocation(), Sound.BLOCK_CROP_BREAK, 0.9F, 1);
         }
     }
 }
