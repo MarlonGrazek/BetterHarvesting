@@ -2,7 +2,10 @@ package com.marlongrazek.betterharvesting.events;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
+import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.MultipleFacing;
 import org.bukkit.block.data.type.Leaves;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -71,7 +74,7 @@ public class EVNbonemealPlants implements Listener {
         if (block.getType() == Material.SUGAR_CANE || block.getType() == Material.CACTUS) {
 
             int countHeight = block.getLocation().getBlockY();
-            int startHeight = -1;
+            int startHeight = -1000;
 
             Material material = null;
             switch (block.getType()) {
@@ -79,7 +82,7 @@ public class EVNbonemealPlants implements Listener {
                 case CACTUS -> material = Material.CACTUS;
             }
 
-            while (startHeight == -1) {
+            while (startHeight == -1000) {
                 Block startBlock = new Location(block.getWorld(), block.getX(), countHeight, block.getZ()).getBlock();
                 if (startBlock.getType() == material) countHeight++;
                 else startHeight = countHeight;
@@ -87,7 +90,7 @@ public class EVNbonemealPlants implements Listener {
 
             if (new Location(block.getWorld(), block.getX(), startHeight, block.getZ()).getBlock().getType() == Material.AIR) {
                 spawnParticle(player, block.getLocation());
-                if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
+                if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
             }
 
             for (int i = startHeight; i < startHeight + strength; i++) {
@@ -97,8 +100,39 @@ public class EVNbonemealPlants implements Listener {
             }
         }
 
+        // vine
+        else if (block.getType() == Material.VINE) {
+
+            Location location = block.getLocation();
+            Block startBlock = null;
+            List<BlockFace> faces = new ArrayList<>(((MultipleFacing) block.getBlockData()).getFaces());
+            faces.removeIf(face -> face == BlockFace.UP);
+
+            while (startBlock == null) {
+                if (location.getBlock().getType() == Material.VINE)
+                    location.setY(location.getY() - 1);
+                else startBlock = location.getBlock();
+            }
+
+            if (startBlock.getType() == Material.AIR) {
+                spawnParticle(player, block.getLocation());
+                if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+            }
+
+            int minHeight = startBlock.getY() - strength;
+            while (startBlock.getY() > minHeight) {
+                if (startBlock.getType() == Material.AIR) {
+                    startBlock.setType(Material.VINE);
+                    MultipleFacing multipleFacing = (MultipleFacing) startBlock.getBlockData();
+                    faces.forEach(face -> multipleFacing.setFace(face, true));
+                    startBlock.setBlockData(multipleFacing);
+                    startBlock = startBlock.getRelative(BlockFace.DOWN);
+                } else break;
+            }
+        }
+
         // dead bush
-        else if(block.getType() == Material.DEAD_BUSH) {
+        else if (block.getType() == Material.DEAD_BUSH) {
 
             List<Material> saplings = Arrays.asList(Material.ACACIA_SAPLING, Material.AZALEA, Material.BIRCH_SAPLING,
                     Material.DARK_OAK_SAPLING, Material.FLOWERING_AZALEA, Material.JUNGLE_SAPLING, Material.OAK_SAPLING,
@@ -109,7 +143,7 @@ public class EVNbonemealPlants implements Listener {
             Material sapling = saplings.get(random.nextInt(saplings.size()));
             block.setType(sapling);
             spawnParticle(player, block.getLocation());
-            if(player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+            if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
         }
 
         // nether warts
@@ -118,21 +152,21 @@ public class EVNbonemealPlants implements Listener {
             e.setCancelled(true);
 
             Ageable crop = (Ageable) block.getBlockData();
-            if(crop.getAge() == crop.getMaximumAge()) return;
+            if (crop.getAge() == crop.getMaximumAge()) return;
 
             Random random = new Random();
             int customStrength;
             int randomint = random.nextInt(10);
 
             if (randomint <= 6) customStrength = 1;
-            else if(randomint > 6 && randomint <= 9) customStrength = 2;
+            else if (randomint > 6 && randomint <= 9) customStrength = 2;
             else customStrength = 3;
 
             crop.setAge(Math.min(crop.getAge() + customStrength, 3));
             block.setBlockData(crop);
 
             spawnParticle(player, block.getLocation());
-            if(player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
+            if (player.getGameMode() != GameMode.CREATIVE) player.getInventory().removeItem(e.getItem());
         }
 
         // dirt, netherrack
