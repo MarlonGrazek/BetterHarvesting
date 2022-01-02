@@ -11,9 +11,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class EVNplayerSneak implements Listener {
 
@@ -57,23 +55,37 @@ public class EVNplayerSneak implements Listener {
 
                             if (randomInt > 10) continue;
 
-                            Sapling sapling = (Sapling) cropLocation.getBlock().getBlockData();
+                            List<Block> megaTreeSaplings = fourSaplingLocations(cropLocation.getBlock());
+                            boolean megaTree = megaTreeSaplings != null;
 
-                            if (sapling.getStage() != sapling.getMaximumStage()) {
-                                sapling.setStage(sapling.getStage() + 1);
-                                cropLocation.getBlock().setBlockData(sapling);
+                            if (megaTree) {
+
+                                for (Block block : megaTreeSaplings) {
+
+                                    Sapling sapling = (Sapling) block.getBlockData();
+
+                                    if (sapling.getStage() != sapling.getMaximumStage()) {
+                                        sapling.setStage(sapling.getStage() + 1);
+                                        block.setBlockData(sapling);
+                                        player.spawnParticle(Particle.VILLAGER_HAPPY, block.getX() + 0.5,
+                                                block.getY(), block.getZ() + 0.5, 5, 0.25, 0, 0.25);
+                                    } else {
+                                        generateTree(megaTreeSaplings.get(0).getLocation(), sapling, megaTree);
+                                        break;
+                                    }
+                                }
+
                             } else {
 
-                                boolean megaTree = fourSaplingLocations(cropLocation.getBlock()) != null;
-                                if (megaTree)
-                                    fourSaplingLocations(cropLocation.getBlock()).forEach(block -> block.setType(Material.AIR));
-                                cropLocation.getBlock().setType(Material.AIR);
-                                generateTree(cropLocation, sapling, megaTree);
-                                player.sendMessage("Tree Growing soon");
-                            }
+                                Sapling sapling = (Sapling) cropLocation.getBlock().getBlockData();
 
-                            player.spawnParticle(Particle.VILLAGER_HAPPY, cropLocation.getX() + 0.5,
-                                    cropLocation.getY(), cropLocation.getZ() + 0.5, 5, 0.25, 0, 0.25);
+                                if (sapling.getStage() != sapling.getMaximumStage()) {
+                                    sapling.setStage(sapling.getStage() + 1);
+                                    cropLocation.getBlock().setBlockData(sapling);
+                                    player.spawnParticle(Particle.VILLAGER_HAPPY, cropLocation.getX() + 0.5,
+                                            cropLocation.getY(), cropLocation.getZ() + 0.5, 5, 0.25, 0, 0.25);
+                                } else generateTree(cropLocation, sapling, megaTree);
+                            }
                         }
                     }
                 }
@@ -91,6 +103,11 @@ public class EVNplayerSneak implements Listener {
 
         // 4 sapling tree
         if (megaTree) {
+
+            for (double x = location.getX(); x < location.getX() + 2; x++)
+                for (double z = location.getZ(); z < location.getZ() + 2; z++)
+                    new Location(location.getWorld(), x, location.getY(), z).getBlock().setType(Material.AIR);
+
             switch (sapling.getMaterial()) {
                 case JUNGLE_SAPLING -> type = TreeType.JUNGLE;
                 case SPRUCE_SAPLING -> type = TreeType.MEGA_REDWOOD;
@@ -99,6 +116,9 @@ public class EVNplayerSneak implements Listener {
 
         // regular tree
         else {
+
+            location.getBlock().setType(Material.AIR);
+
             switch (sapling.getMaterial()) {
                 case ACACIA_SAPLING -> type = TreeType.ACACIA;
                 case AZALEA -> type = TreeType.AZALEA;
@@ -131,39 +151,56 @@ public class EVNplayerSneak implements Listener {
         Block blockEast = block.getRelative(BlockFace.EAST);
         Block blockWest = block.getRelative(BlockFace.WEST);
 
+        boolean megaTree = true;
+
+        double[] min = new double[2];
+        double[] max = new double[2];
+
         // northeast
         if (blockNorth.getType() == block.getType() && blockEast.getType() == block.getType() &&
                 block.getRelative(BlockFace.NORTH_EAST).getType() == block.getType()) {
-            saplingLocations.add(blockNorth);
-            saplingLocations.add(blockEast);
-            saplingLocations.add(block.getRelative(BlockFace.NORTH_EAST));
+            min[0] = blockNorth.getX();
+            min[1] = blockNorth.getZ();
+            max[0] = blockEast.getX();
+            max[1] = blockEast.getZ();
         }
 
         // northwest
-        else if(blockNorth.getType() == block.getType() && blockWest.getType() == block.getType() &&
+        else if (blockNorth.getType() == block.getType() && blockWest.getType() == block.getType() &&
                 block.getRelative(BlockFace.NORTH_WEST).getType() == block.getType()) {
-            saplingLocations.add(blockNorth);
-            saplingLocations.add(blockWest);
-            saplingLocations.add(block.getRelative(BlockFace.NORTH_WEST));
+            min[0] = block.getRelative(BlockFace.NORTH_WEST).getX();
+            min[1] = block.getRelative(BlockFace.NORTH_WEST).getY();
+            max[0] = block.getX();
+            max[1] = block.getZ();
         }
 
         // southeast
-        else if(blockSouth.getType() == block.getType() && blockEast.getType() == block.getType() &&
+        else if (blockSouth.getType() == block.getType() && blockEast.getType() == block.getType() &&
                 block.getRelative(BlockFace.SOUTH_EAST).getType() == block.getType()) {
-            saplingLocations.add(blockSouth);
-            saplingLocations.add(blockEast);
-            saplingLocations.add(block.getRelative(BlockFace.SOUTH_EAST));
+            min[0] = block.getX();
+            min[1] = block.getZ();
+            max[0] = block.getRelative(BlockFace.SOUTH_EAST).getX();
+            max[1] = block.getRelative(BlockFace.SOUTH_EAST).getZ();
         }
 
         // southwest
-        else if(blockSouth.getType() == block.getType() && blockWest.getType() == block.getType() &&
+        else if (blockSouth.getType() == block.getType() && blockWest.getType() == block.getType() &&
                 block.getRelative(BlockFace.SOUTH_WEST).getType() == block.getType()) {
-            saplingLocations.add(blockSouth);
-            saplingLocations.add(blockWest);
-            saplingLocations.add(block.getRelative(BlockFace.SOUTH_WEST));
+            min[0] = blockWest.getX();
+            min[1] = blockWest.getZ();
+            max[0] = blockSouth.getX();
+            max[1] = blockSouth.getZ();
+        } else megaTree = false;
+
+        if (megaTree) {
+            for (double x = min[0]; x < max[0] + 1; x++) {
+                for (double z = min[1]; z < max[1] + 1; z++) {
+                    saplingLocations.add(new Location(block.getWorld(), x, block.getY(), z).getBlock());
+                }
+            }
         }
 
-        if(saplingLocations.isEmpty()) return null;
+        if (saplingLocations.isEmpty()) return null;
         return saplingLocations;
     }
 }
