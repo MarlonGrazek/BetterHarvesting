@@ -75,7 +75,6 @@
             <groupId>net.wesjd</groupId>
             <artifactId>anvilgui</artifactId>
             <version>1.5.3-SNAPSHOT</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.spigotmc</groupId>
@@ -87,25 +86,21 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
             <version>3.6.1</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.github.MarlonGrazek</groupId>
             <artifactId>UI</artifactId>
             <version>e6a4c3f0b8</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.github.MarlonGrazek</groupId>
             <artifactId>DataFile</artifactId>
             <version>929d3c5759</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.github.MarlonGrazek</groupId>
             <artifactId>Builder</artifactId>
             <version>d98513b530</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>de.jeff_media</groupId>
