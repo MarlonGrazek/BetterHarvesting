@@ -1,5 +1,7 @@
 package com.marlongrazek.betterharvesting.events;
 
+import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.datafile.DataFile;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -61,6 +63,38 @@ public class EVNbonemealPlants implements Listener {
         if (e.getItem() == null) return;
         if (e.getItem().getType() != Material.BONE_MEAL) return;
         if (e.getHand() != EquipmentSlot.HAND) return;
+
+        DataFile settings = Main.getDataFile("settings");
+        if(!settings.getBoolean("bonemeal.enabled", true)) return;
+
+        List<String> permissions = new ArrayList<>(settings.getStringList("bonemeal.permissions"));
+
+        String category = "";
+        String item = e.getClickedBlock().getType().name().toLowerCase();
+
+        if(List.of(Material.POPPY, Material.DANDELION, Material.BLUE_ORCHID, Material.ALLIUM, Material.AZURE_BLUET,
+                Material.RED_TULIP, Material.ORANGE_TULIP, Material.WHITE_TULIP, Material.PINK_TULIP, Material.OXEYE_DAISY,
+                Material.CORNFLOWER, Material.LILY_OF_THE_VALLEY).contains(e.getClickedBlock().getType())) category = ".flowers";
+        else if(e.getClickedBlock().getType() == Material.DEAD_BUSH) category = ".dead_bush";
+
+        if(!settings.getBoolean("bonemeal.enabled", true)) return;
+        if(!category.isEmpty()) if(!settings.getBoolean("bonemeal" + category + ".enabled", true)) return;
+        if(!settings.getBoolean("bonemeal" + category + "." + item + ".enabled", true)) return;
+
+        if(!category.isEmpty()) permissions.addAll(settings.getStringList("bonemeal" + category + ".permissions"));
+        permissions.addAll(settings.getStringList("bonemeal" + category + "." + item + ".permissions"));
+
+        boolean hasPermission = false;
+        if(!permissions.isEmpty()) {
+            for (String permission : permissions) {
+                if (e.getPlayer().hasPermission(permission)) {
+                    hasPermission = true;
+                    break;
+                }
+            }
+        } else hasPermission = true;
+
+        if(!hasPermission) return;
 
         List<Material> bonemealableBlocks = new ArrayList<>();
         for (BonemealableBlock block : BonemealableBlock.values()) bonemealableBlocks.add(block.getMaterial());

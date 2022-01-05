@@ -1,5 +1,8 @@
 package com.marlongrazek.betterharvesting.events;
 
+import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.datafile.DataFile;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.data.type.Leaves;
@@ -12,9 +15,10 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
-public class EVNharvestFromBlocks implements Listener {
+public class EVNhoeHarvesting implements Listener {
 
     public enum leaves {
         AZALEA_LEAVES, ACACIA_LEAVES, BIRCH_LEAVES, DARK_OAK_LEAVES, FLOWERING_AZALEA_LEAVES, JUNGLE_LEAVES, OAK_LEAVES,
@@ -62,6 +66,45 @@ public class EVNharvestFromBlocks implements Listener {
 
         ArrayList<Material> plants = new ArrayList<>(Arrays.asList(Material.GRASS, Material.TALL_GRASS,
                 Material.FERN, Material.LARGE_FERN));
+
+        DataFile settings = Main.getDataFile("settings");
+        if (!settings.getBoolean("modify.enabled", true)) return;
+
+        List<String> permissions = new ArrayList<>(settings.getStringList("modify.permissions"));
+
+        String category = "";
+        String item = e.getBlock().getType().name().toLowerCase();
+
+        if (List.of(Material.ACACIA_LEAVES, Material.AZALEA_LEAVES, Material.DARK_OAK_LEAVES,
+                Material.FLOWERING_AZALEA_LEAVES, Material.JUNGLE_LEAVES, Material.OAK_LEAVES,
+                Material.SPRUCE_LEAVES).contains(e.getBlock().getType())) {
+            category = ".leaves";
+        } else if (List.of(Material.GRASS, Material.TALL_GRASS, Material.FERN, Material.LARGE_FERN).
+                contains(e.getBlock().getType())) {
+            category = ".grasses";
+        }
+
+        if (!settings.getBoolean("modify.enabled", true)) return;
+        if (!category.isEmpty()) if (!settings.getBoolean("modify.hoe.enabled", true)) return;
+        if (!category.isEmpty())
+            if (!settings.getBoolean("modify.hoe" + category + ".enabled", true)) return;
+        if (!settings.getBoolean("modify.hoe" + category + "." + item + ".enabled", true)) return;
+
+        if (!category.isEmpty()) permissions.addAll(settings.getStringList("modify.hoe" + ".permissions"));
+        if (!category.isEmpty()) permissions.addAll(settings.getStringList("modify.hoe" + category + ".permissions"));
+        permissions.addAll(settings.getStringList("modify.hoe" + category + "." + item + ".permissions"));
+
+        boolean hasPermission = false;
+        if (!permissions.isEmpty()) {
+            for (String permission : permissions) {
+                if (e.getPlayer().hasPermission(permission)) {
+                    hasPermission = true;
+                    break;
+                }
+            }
+        } else hasPermission = true;
+
+        if (!hasPermission) return;
 
         if (!hoes.contains(tool.getType())) return;
 

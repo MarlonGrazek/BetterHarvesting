@@ -11,6 +11,9 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionType;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Recipes {
 
     public enum SaplingType {
@@ -50,8 +53,7 @@ public class Recipes {
 
     public void setUp() {
         Bukkit.addRecipe(water_bottle());
-
-        for(SaplingType type : SaplingType.values()) Bukkit.addRecipe(sapling(type));
+        for (SaplingType type : SaplingType.values()) Bukkit.addRecipe(sapling(type));
     }
 
     private ShapelessRecipe water_bottle() {
@@ -83,5 +85,15 @@ public class Recipes {
         recipe.setIngredient('D', Material.DEAD_BUSH);
 
         return recipe;
+    }
+
+    public List<NamespacedKey> getRecipeKeys() {
+
+        List<NamespacedKey> keys = new ArrayList<>();
+
+        keys.add(water_bottle().getKey());
+        for (SaplingType value : SaplingType.values()) keys.add(sapling(value).getKey());
+
+        return keys;
     }
 }

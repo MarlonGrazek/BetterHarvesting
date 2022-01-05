@@ -1,5 +1,8 @@
 package com.marlongrazek.betterharvesting.events;
 
+import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.datafile.DataFile;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -18,8 +21,9 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.List;
 
-public class EVNharvestCrops implements Listener {
+public class EVNmodifyBlocks implements Listener {
 
     @EventHandler
     public void onClick(PlayerInteractEvent e) {
@@ -28,6 +32,46 @@ public class EVNharvestCrops implements Listener {
 
         Block block = e.getClickedBlock();
         Player player = e.getPlayer();
+
+        DataFile settings = Main.getDataFile("settings");
+        if (!settings.getBoolean("modify.enabled", true)) return;
+
+        List<String> permissions = new ArrayList<>(settings.getStringList("modify.permissions"));
+
+        String category = "";
+        String item = e.getClickedBlock().getType().name().toLowerCase();
+
+        if (List.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.COCOA, Material.MELON_STEM,
+                Material.PUMPKIN_STEM).contains(e.getClickedBlock().getType())) category = ".crops";
+
+        switch (e.getClickedBlock().getType()) {
+            case WHEAT -> item = "wheat_seeds";
+            case BEETROOTS -> item = "beetroot_seeds";
+            case CARROTS -> item = "carrot";
+            case POTATOES -> item = "potato";
+            case COCOA -> item = "cocoa_beans";
+            case MELON_STEM -> item = "melon_seeds";
+            case PUMPKIN_STEM -> item = "pumpkin_seeds";
+        }
+
+        if (!settings.getBoolean("modify.enabled", true)) return;
+        if (!category.isEmpty()) if (!settings.getBoolean("modify" + category + ".enabled", true)) return;
+        if (!settings.getBoolean("modify" + category + "." + item + ".enabled", true)) return;
+
+        if (!category.isEmpty()) permissions.addAll(settings.getStringList("modify" + category + ".permissions"));
+        permissions.addAll(settings.getStringList("modify" + category + "." + item + ".permissions"));
+
+        boolean hasPermission = false;
+        if (!permissions.isEmpty()) {
+            for (String permission : permissions) {
+                if (e.getPlayer().hasPermission(permission)) {
+                    hasPermission = true;
+                    break;
+                }
+            }
+        } else hasPermission = true;
+
+        if (!hasPermission) return;
 
         // candles and sea pickles
         if (block.getBlockData() instanceof SeaPickle || block.getBlockData() instanceof Candle) {
