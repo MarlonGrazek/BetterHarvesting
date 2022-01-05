@@ -16,10 +16,11 @@ public class CMDsettings extends PluginCommand {
         if(args.length == 0) {
 
             History history = Main.getHistory(player);
+            history.clear();
             history.addPage(null);
 
             GUI gui = new GUI(player);
-            gui.open(gui.menu());
+            gui.open(gui.settings(""));
         }
     }
 }

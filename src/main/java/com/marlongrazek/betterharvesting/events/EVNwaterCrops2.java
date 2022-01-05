@@ -1,6 +1,8 @@
 package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.WateringEvent;
+import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.datafile.DataFile;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -14,6 +16,9 @@ public class EVNwaterCrops2 implements Listener {
 
     @EventHandler
     public void onWatering(WateringEvent e) {
+
+        DataFile settings = Main.getDataFile("settings");
+        if(!settings.getBoolean("watering.enabled", true)) return;
 
         for (Block block : e.getAffectedBlocks()) {
 

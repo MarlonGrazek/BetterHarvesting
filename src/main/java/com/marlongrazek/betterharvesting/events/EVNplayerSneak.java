@@ -1,6 +1,7 @@
 package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.datafile.DataFile;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -22,6 +23,7 @@ public class EVNplayerSneak implements Listener {
 
         if (e.isSneaking()) {
 
+            DataFile config = Main.getDataFile("config");
             taskid = Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(), () -> {
 
                 Player player = e.getPlayer();
@@ -34,6 +36,50 @@ public class EVNplayerSneak implements Listener {
                         int randomInt = random.nextInt(100);
 
                         Location cropLocation = new Location(playerLocation.getWorld(), x, playerLocation.getY(), z);
+
+                        DataFile settings = Main.getDataFile("settings");
+
+                        if (!settings.getBoolean("sneaking.enabled", true)) continue;
+
+                        List<String> permissions = new ArrayList<>(settings.getStringList("sneaking.permissions"));
+
+                        String category = "";
+                        String item = cropLocation.getBlock().getType().name().toLowerCase();
+
+                        if (List.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.COCOA, Material.MELON_STEM,
+                                Material.PUMPKIN_STEM).contains(cropLocation.getBlock().getType())) category = ".crops";
+                        else if (cropLocation.getBlock().getBlockData() instanceof Sapling) category = ".saplings";
+
+                        switch (cropLocation.getBlock().getType()) {
+                            case WHEAT -> item = "wheat_seeds";
+                            case BEETROOTS -> item = "beetroot_seeds";
+                            case CARROTS -> item = "carrot";
+                            case POTATOES -> item = "potato";
+                            case COCOA -> item = "cocoa_beans";
+                            case MELON_STEM -> item = "melon_seeds";
+                            case PUMPKIN_STEM -> item = "pumpkin_seeds";
+                        }
+
+                        if (!settings.getBoolean("sneaking.enabled", true)) continue;
+                        if (!category.isEmpty())
+                            if (!settings.getBoolean("sneaking" + category + ".enabled", true)) continue;
+                        if (!settings.getBoolean("sneaking" + category + "." + item + ".enabled", true)) continue;
+
+                        if (!category.isEmpty())
+                            permissions.addAll(settings.getStringList("sneaking" + category + ".permissions"));
+                        permissions.addAll(settings.getStringList("sneaking" + category + "." + item + ".permissions"));
+
+                        boolean hasPermission = false;
+                        if (!permissions.isEmpty()) {
+                            for (String permission : permissions) {
+                                if (e.getPlayer().hasPermission(permission)) {
+                                    hasPermission = true;
+                                    break;
+                                }
+                            }
+                        } else hasPermission = true;
+
+                        if (!hasPermission) continue;
 
                         // crops
                         if (cropLocation.getBlock().getBlockData() instanceof Ageable) {
@@ -58,7 +104,7 @@ public class EVNplayerSneak implements Listener {
                             List<Block> megaTreeSaplings = fourSaplingLocations(cropLocation.getBlock());
                             boolean megaTree = megaTreeSaplings != null;
 
-                            if (megaTree) {
+                            if (megaTree && config.getBoolean("experimental.megatrees.enabled", false)) {
 
                                 for (Block block : megaTreeSaplings) {
 

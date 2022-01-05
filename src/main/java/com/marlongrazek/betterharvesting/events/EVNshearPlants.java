@@ -1,5 +1,7 @@
 package com.marlongrazek.betterharvesting.events;
 
+import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.datafile.DataFile;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
@@ -73,6 +75,39 @@ public class EVNshearPlants implements Listener {
         if (e.getItem() == null) return;
         if (e.getItem().getType() != Material.SHEARS) return;
         if (e.getHand() == EquipmentSlot.HAND && e.getHand() == EquipmentSlot.OFF_HAND) return;
+
+        DataFile settings = Main.getDataFile("settings");
+        if (!settings.getBoolean("shearing.enabled", true)) return;
+
+        List<String> permissions = new ArrayList<>(settings.getStringList("shearing.permissions"));
+
+        String category = "";
+        String item = e.getClickedBlock().getType().name().toLowerCase();
+
+        if (List.of(Material.ACACIA_SAPLING, Material.AZALEA, Material.BIRCH_SAPLING, Material.DARK_OAK_SAPLING,
+                        Material.FLOWERING_AZALEA, Material.JUNGLE_SAPLING, Material.OAK_SAPLING, Material.SPRUCE_SAPLING).
+                contains(e.getClickedBlock().getType())) category = ".saplings";
+        else if (List.of(Material.TALL_GRASS, Material.TALL_SEAGRASS, Material.LARGE_FERN).
+                contains(e.getClickedBlock().getType())) category = ".tall_blocks";
+
+        if (!settings.getBoolean("shearing.enabled", true)) return;
+        if (!category.isEmpty()) if (!settings.getBoolean("shearing" + category + ".enabled", true)) return;
+        if (!settings.getBoolean("shearing" + category + "." + item + ".enabled", true)) return;
+
+        if (!category.isEmpty()) permissions.addAll(settings.getStringList("shearing" + category + ".permissions"));
+        permissions.addAll(settings.getStringList("shearing" + category + "." + item + ".permissions"));
+
+        boolean hasPermission = false;
+        if (!permissions.isEmpty()) {
+            for (String permission : permissions) {
+                if (e.getPlayer().hasPermission(permission)) {
+                    hasPermission = true;
+                    break;
+                }
+            }
+        } else hasPermission = true;
+
+        if (!hasPermission) return;
 
         Player player = e.getPlayer();
         Block block = e.getClickedBlock();
