@@ -167,7 +167,7 @@ public class EVNplayerSneak implements Listener {
 
             switch (sapling.getMaterial()) {
                 case ACACIA_SAPLING -> type = TreeType.ACACIA;
-                case AZALEA -> type = TreeType.AZALEA;
+                case AZALEA, FLOWERING_AZALEA -> type = TreeType.AZALEA;
                 case BIRCH_SAPLING -> {
                     if (tallTree) type = TreeType.TALL_BIRCH;
                     else type = TreeType.BIRCH;
