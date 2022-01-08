@@ -2,10 +2,12 @@ package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
 import com.marlongrazek.datafile.DataFile;
+import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -13,11 +15,9 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class EVNshearPlants implements Listener {
 
@@ -111,6 +111,7 @@ public class EVNshearPlants implements Listener {
 
         Player player = e.getPlayer();
         Block block = e.getClickedBlock();
+        ItemStack tool = e.getItem();
 
         List<Material> shearableBlocks = new ArrayList<>();
         for (ShearableBlock shearableBlock : ShearableBlock.values()) shearableBlocks.add(shearableBlock.getMaterial());
@@ -130,5 +131,21 @@ public class EVNshearPlants implements Listener {
 
         player.playSound(block.getLocation(), Sound.ENTITY_SHEEP_SHEAR, 1, 1);
         shearableBlock.getDrops().forEach(drop -> block.getWorld().dropItemNaturally(block.getLocation(), drop));
+
+        if (player.getGameMode() != GameMode.CREATIVE && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
+            Damageable meta = (Damageable) tool.getItemMeta();
+            meta.setDamage(meta.getDamage() + 1);
+            tool.setItemMeta(meta);
+        }
+    }
+
+    public boolean damageTool(int enchantmentLevel) {
+
+        Random random = new Random();
+        int randomInt = random.nextInt(100) + 1;
+
+        int chance = 100 - (100 / (enchantmentLevel + 1));
+
+        return randomInt > chance;
     }
 }
