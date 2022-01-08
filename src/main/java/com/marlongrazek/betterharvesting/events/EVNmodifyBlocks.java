@@ -12,6 +12,7 @@ import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.type.Candle;
 import org.bukkit.block.data.type.SeaPickle;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -19,9 +20,11 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class EVNmodifyBlocks implements Listener {
 
@@ -150,12 +153,18 @@ public class EVNmodifyBlocks implements Listener {
         // crops
         else if (block.getBlockData() instanceof Ageable) {
 
+            if (e.getItem() == null) return;
+            if (!List.of(Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE,
+                    Material.DIAMOND_HOE, Material.NETHERITE_HOE).contains(e.getItem().getType())) return;
             if (block.getType() == Material.SWEET_BERRY_BUSH) return;
 
             Ageable crop = (Ageable) e.getClickedBlock().getBlockData();
             if (crop.getAge() != crop.getMaximumAge()) return;
 
             e.setCancelled(true);
+
+            ItemStack tool = e.getItem();
+            int multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
 
             ArrayList<ItemStack> drops = new ArrayList<>(e.getClickedBlock().getDrops());
 
@@ -173,13 +182,61 @@ public class EVNmodifyBlocks implements Listener {
                     }
                 }
 
-                if (drop.getAmount() > 0)
+                if (drop != null && drop.getAmount() > 0 && drop.getType() != Material.AIR) {
+                    drop.setAmount(drop.getAmount() * multiplier);
                     e.getClickedBlock().getWorld().dropItemNaturally(e.getClickedBlock().getLocation(), drop);
+                }
             }
 
             crop.setAge(0);
             block.setBlockData(crop);
+
+            if (player.getGameMode() != GameMode.CREATIVE && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
+                Damageable meta = (Damageable) tool.getItemMeta();
+                meta.setDamage(meta.getDamage() + 1);
+                tool.setItemMeta(meta);
+            }
+
             player.playSound(player.getLocation(), Sound.BLOCK_CROP_BREAK, 0.9F, 1);
         }
+    }
+
+    public int getDropMultiplier(int enchantmentLevel) {
+
+        Random random = new Random();
+        int randomInt = random.nextInt(100) + 1;
+
+        int multiplier;
+
+        switch (enchantmentLevel) {
+            case 1 -> {
+                if (randomInt <= 66) multiplier = 1;
+                else multiplier = 2;
+            }
+            case 2 -> {
+                if (randomInt <= 50) multiplier = 1;
+                else if (randomInt > 50 && randomInt <= 75) multiplier = 2;
+                else multiplier = 3;
+            }
+            case 3 -> {
+                if (randomInt <= 40) multiplier = 1;
+                else if (randomInt > 40 && randomInt <= 60) multiplier = 2;
+                else if (randomInt > 60 && randomInt <= 80) multiplier = 3;
+                else multiplier = 4;
+            }
+            default -> multiplier = 1;
+        }
+
+        return multiplier;
+    }
+
+    public boolean damageTool(int enchantmentLevel) {
+
+        Random random = new Random();
+        int randomInt = random.nextInt(100) + 1;
+
+        int chance = 100 - (100 / (enchantmentLevel + 1));
+
+        return randomInt > chance;
     }
 }

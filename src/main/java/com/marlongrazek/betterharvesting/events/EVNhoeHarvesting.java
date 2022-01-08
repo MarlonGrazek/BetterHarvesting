@@ -3,6 +3,7 @@ package com.marlongrazek.betterharvesting.events;
 import com.marlongrazek.betterharvesting.main.Main;
 import com.marlongrazek.datafile.DataFile;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.data.type.Leaves;
@@ -12,6 +13,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,32 +114,27 @@ public class EVNhoeHarvesting implements Listener {
         int randomInt = random.nextInt(100);
         Location location = e.getBlock().getLocation();
 
-        int amount = 1;
-        if (tool.containsEnchantment(Enchantment.LOOT_BONUS_BLOCKS)) {
-            if (randomInt < 60) amount += (tool.getEnchantmentLevel(Enchantment.LUCK) + 1);
-            else if (randomInt >= 60 && randomInt < 70)
-                amount *= (tool.getEnchantmentLevel(Enchantment.LUCK) + 1);
-        }
+        int multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
 
         // grass
         if (plants.contains(e.getBlock().getType())) {
 
             e.setDropItems(false);
 
-            if (randomInt <= 40) dropItem(location, new ItemStack(Material.WHEAT_SEEDS, amount));
+            if (randomInt <= 40) dropItem(location, new ItemStack(Material.WHEAT_SEEDS, multiplier));
             else if (randomInt > 40 && randomInt <= 50)
-                dropItem(location, new ItemStack(Material.WHEAT_SEEDS, 2 * amount));
+                dropItem(location, new ItemStack(Material.WHEAT_SEEDS, 2 * multiplier));
             else if (randomInt > 50 && randomInt <= 56)
-                dropItem(location, new ItemStack(Material.BEETROOT_SEEDS, amount));
+                dropItem(location, new ItemStack(Material.BEETROOT_SEEDS, multiplier));
             else if (randomInt > 56 && randomInt <= 58)
-                dropItem(location, new ItemStack(Material.CARROT, amount));
+                dropItem(location, new ItemStack(Material.CARROT, multiplier));
             else if (randomInt > 58 && randomInt <= 60)
-                dropItem(location, new ItemStack(Material.POTATO, amount));
+                dropItem(location, new ItemStack(Material.POTATO, multiplier));
             else if (randomInt > 60 && randomInt <= 65)
-                dropItem(location, new ItemStack(Material.STICK, amount));
+                dropItem(location, new ItemStack(Material.STICK, multiplier));
             if ((randomInt > 20 && randomInt <= 22) || (randomInt > 40 && randomInt <= 42) ||
                     (randomInt > 50 && randomInt <= 52) || (randomInt > 60 && randomInt <= 62))
-                location.getWorld().spawn(location, ExperienceOrb.class).setExperience(amount);
+                location.getWorld().spawn(location, ExperienceOrb.class).setExperience(multiplier);
         }
 
         // leaves
@@ -145,7 +142,7 @@ public class EVNhoeHarvesting implements Listener {
 
             e.setDropItems(false);
 
-            if (randomInt <= 40) dropItem(location, new ItemStack(Material.STICK, amount));
+            if (randomInt <= 40) dropItem(location, new ItemStack(Material.STICK, multiplier));
             else if (randomInt > 40 && randomInt < 80) {
 
                 leaves leaf = leaves.valueOf(e.getBlock().getType().name());
@@ -154,11 +151,40 @@ public class EVNhoeHarvesting implements Listener {
                 if (e.getBlock().getType() == Material.OAK_LEAVES) dropItem(location, new ItemStack(Material.APPLE));
             }
             if ((randomInt > 20 && randomInt <= 22) || (randomInt > 40 && randomInt <= 42) || (randomInt > 80 && randomInt <= 82))
-                location.getWorld().spawn(location, ExperienceOrb.class).setExperience(amount);
+                location.getWorld().spawn(location, ExperienceOrb.class).setExperience(multiplier);
         }
     }
 
     public void dropItem(Location location, ItemStack item) {
         location.getWorld().dropItemNaturally(location, item);
+    }
+
+    public int getDropMultiplier(int enchantmentLevel) {
+
+        Random random = new Random();
+        int randomInt = random.nextInt(100) + 1;
+
+        int multiplier;
+
+        switch (enchantmentLevel) {
+            case 1 -> {
+                if (randomInt <= 66) multiplier = 1;
+                else multiplier = 2;
+            }
+            case 2 -> {
+                if (randomInt <= 50) multiplier = 1;
+                else if (randomInt > 50 && randomInt <= 75) multiplier = 2;
+                else multiplier = 3;
+            }
+            case 3 -> {
+                if (randomInt <= 40) multiplier = 1;
+                else if (randomInt > 40 && randomInt <= 60) multiplier = 2;
+                else if (randomInt > 60 && randomInt <= 80) multiplier = 3;
+                else multiplier = 4;
+            }
+            default -> multiplier = 1;
+        }
+
+        return multiplier;
     }
 }
