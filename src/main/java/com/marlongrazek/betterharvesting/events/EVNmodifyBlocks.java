@@ -2,7 +2,6 @@ package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
 import com.marlongrazek.datafile.DataFile;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -28,6 +27,12 @@ import java.util.Random;
 
 public class EVNmodifyBlocks implements Listener {
 
+    private final Main plugin;
+
+    public EVNmodifyBlocks(Main plugin) {
+        this.plugin = plugin;
+    }
+
     @EventHandler
     public void onClick(PlayerInteractEvent e) {
 
@@ -36,45 +41,105 @@ public class EVNmodifyBlocks implements Listener {
         Block block = e.getClickedBlock();
         Player player = e.getPlayer();
 
-        DataFile settings = Main.getDataFile("settings");
-        if (!settings.getBoolean("modify.enabled", true)) return;
+        DataFile settings = plugin.getDataFile("settings");
 
-        List<String> permissions = new ArrayList<>(settings.getStringList("modify.permissions"));
+        if (block.getBlockData() instanceof Ageable) {
 
-        String category = "";
-        String item = e.getClickedBlock().getType().name().toLowerCase();
+            boolean enabled = settings.getBoolean("crop_harvesting.enabled", true);
+            boolean no_item_enabled = settings.getBoolean("crop_harvesting.tools.no_tool", true);
+            boolean hoe_enabled = settings.getBoolean("crop_harvesting.tools.hoe", true);
 
-        if (List.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.COCOA, Material.MELON_STEM,
-                Material.PUMPKIN_STEM).contains(e.getClickedBlock().getType())) category = ".crops";
+            boolean fortune_enabled = settings.getBoolean("crop_harvesting.fortune", true);
 
-        switch (e.getClickedBlock().getType()) {
-            case WHEAT -> item = "wheat_seeds";
-            case BEETROOTS -> item = "beetroot_seeds";
-            case CARROTS -> item = "carrot";
-            case POTATOES -> item = "potato";
-            case COCOA -> item = "cocoa_beans";
-            case MELON_STEM -> item = "melon_seeds";
-            case PUMPKIN_STEM -> item = "pumpkin_seeds";
-        }
+            List<String> harvesting_permissions = settings.getStringList("crop_harvesting.permissions");
 
-        if (!settings.getBoolean("modify.enabled", true)) return;
-        if (!category.isEmpty()) if (!settings.getBoolean("modify" + category + ".enabled", true)) return;
-        if (!settings.getBoolean("modify" + category + "." + item + ".enabled", true)) return;
+            List<Material> hoes = List.of(Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE);
 
-        if (!category.isEmpty()) permissions.addAll(settings.getStringList("modify" + category + ".permissions"));
-        permissions.addAll(settings.getStringList("modify" + category + "." + item + ".permissions"));
+            if (e.getHand() != EquipmentSlot.HAND) return;
 
-        boolean hasPermission = false;
-        if (!permissions.isEmpty()) {
-            for (String permission : permissions) {
-                if (e.getPlayer().hasPermission(permission)) {
-                    hasPermission = true;
-                    break;
+            // disabled
+            if (!enabled) return;
+
+            if (e.getItem() == null) {
+                if (!no_item_enabled) return;
+            } else if (e.getItem() != null && hoes.contains(e.getItem().getType())) {
+                if (!hoe_enabled) return;
+            } else return;
+
+            // no permission
+            if (!hasPermissionFromList(player, harvesting_permissions)) return;
+
+            String clicked;
+            switch (e.getClickedBlock().getType()) {
+                case WHEAT -> clicked = "wheat_seeds";
+                case BEETROOTS -> clicked = "beetroot_seeds";
+                case CARROTS -> clicked = "carrot";
+                case POTATOES -> clicked = "potato";
+                case COCOA -> clicked = "cocoa_beans";
+                case MELON_STEM -> clicked = "melon_seeds";
+                case PUMPKIN_STEM -> clicked = "pumpkin_seeds";
+                default -> {
+                    return;
                 }
             }
-        } else hasPermission = true;
 
-        if (!hasPermission) return;
+            if (!settings.getBoolean("crop_harvesting.crops." + clicked, true)) return;
+
+            if (block.getType() == Material.SWEET_BERRY_BUSH) return;
+
+            Ageable crop = (Ageable) e.getClickedBlock().getBlockData();
+            if (crop.getAge() != crop.getMaximumAge()) return;
+
+            e.setCancelled(true);
+
+            ItemStack tool = e.getItem();
+            int multiplier = 1;
+            if (tool != null && fortune_enabled)
+                multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
+
+            ArrayList<ItemStack> drops = new ArrayList<>(e.getClickedBlock().getDrops());
+            drops.removeIf(drop -> drop == null || drop.getType() == Material.AIR);
+
+            boolean removedSeed = false;
+            for (ItemStack drop : drops) {
+                switch (drop.getType()) {
+                    case POTATO, CARROT, BEETROOT_SEEDS, WHEAT_SEEDS, NETHER_WART, COCOA_BEANS, MELON_SEEDS, PUMPKIN_SEEDS -> {
+                        if (!removedSeed) {
+                            drop.setAmount(drop.getAmount() - 1);
+                            removedSeed = true;
+                        }
+                    }
+                }
+
+                if (drop != null && drop.getAmount() > 0 && drop.getType() != Material.AIR) {
+                    drop.setAmount(drop.getAmount() * multiplier);
+                    e.getClickedBlock().getWorld().dropItemNaturally(e.getClickedBlock().getLocation(), drop);
+                }
+            }
+
+            crop.setAge(0);
+            block.setBlockData(crop);
+
+            if (player.getGameMode() != GameMode.CREATIVE && tool != null && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
+                Damageable meta = (Damageable) tool.getItemMeta();
+                meta.setDamage(meta.getDamage() + 1);
+                tool.setItemMeta(meta);
+            }
+
+            player.playSound(player.getLocation(), Sound.BLOCK_CROP_BREAK, 0.9F, 1);
+            return;
+        }
+
+        // feature disabled
+        if (!settings.getBoolean("right_clicking.enabled", true)) return;
+
+        // no permissions
+        List<String> permissions = new ArrayList<>(settings.getStringList("right_clicking.permissions"));
+        if(!hasPermissionFromList(player, permissions)) return;
+
+        // block disabled
+        String item = e.getClickedBlock().getType().name().toLowerCase();
+        if (!settings.getBoolean("right_clicking.blocks." + item, true)) return;
 
         // candles and sea pickles
         if (block.getBlockData() instanceof SeaPickle || block.getBlockData() instanceof Candle) {
@@ -149,56 +214,6 @@ public class EVNmodifyBlocks implements Listener {
             if (player.getGameMode() != GameMode.CREATIVE || !player.getInventory().contains(new ItemStack(Material.TORCH)))
                 player.getInventory().addItem(new ItemStack(Material.TORCH));
         }
-
-        // crops
-        else if (block.getBlockData() instanceof Ageable) {
-
-            if (e.getItem() == null) return;
-            if (!List.of(Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE,
-                    Material.DIAMOND_HOE, Material.NETHERITE_HOE).contains(e.getItem().getType())) return;
-            if (block.getType() == Material.SWEET_BERRY_BUSH) return;
-
-            Ageable crop = (Ageable) e.getClickedBlock().getBlockData();
-            if (crop.getAge() != crop.getMaximumAge()) return;
-
-            e.setCancelled(true);
-
-            ItemStack tool = e.getItem();
-            int multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
-
-            ArrayList<ItemStack> drops = new ArrayList<>(e.getClickedBlock().getDrops());
-
-            boolean removedSeed = false;
-            for (ItemStack drop : drops) {
-
-                if (drop.getType() == Material.AIR) drops.remove(drop);
-
-                switch (drop.getType()) {
-                    case POTATO, CARROT, BEETROOT_SEEDS, WHEAT_SEEDS, NETHER_WART, COCOA_BEANS, MELON_SEEDS, PUMPKIN_SEEDS -> {
-                        if (!removedSeed) {
-                            drop.setAmount(drop.getAmount() - 1);
-                            removedSeed = true;
-                        }
-                    }
-                }
-
-                if (drop != null && drop.getAmount() > 0 && drop.getType() != Material.AIR) {
-                    drop.setAmount(drop.getAmount() * multiplier);
-                    e.getClickedBlock().getWorld().dropItemNaturally(e.getClickedBlock().getLocation(), drop);
-                }
-            }
-
-            crop.setAge(0);
-            block.setBlockData(crop);
-
-            if (player.getGameMode() != GameMode.CREATIVE && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
-                Damageable meta = (Damageable) tool.getItemMeta();
-                meta.setDamage(meta.getDamage() + 1);
-                tool.setItemMeta(meta);
-            }
-
-            player.playSound(player.getLocation(), Sound.BLOCK_CROP_BREAK, 0.9F, 1);
-        }
     }
 
     public int getDropMultiplier(int enchantmentLevel) {
@@ -238,5 +253,11 @@ public class EVNmodifyBlocks implements Listener {
         int chance = 100 - (100 / (enchantmentLevel + 1));
 
         return randomInt > chance;
+    }
+
+    public boolean hasPermissionFromList(Player player, List<String> permissions) {
+        if (permissions.isEmpty()) return true;
+        for (String permission : permissions) if (player.hasPermission(permission)) return true;
+        return false;
     }
 }

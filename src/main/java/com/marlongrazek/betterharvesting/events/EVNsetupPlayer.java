@@ -7,8 +7,14 @@ import org.bukkit.event.player.PlayerJoinEvent;
 
 public class EVNsetupPlayer implements Listener {
 
+    private final Main plugin;
+
+    public EVNsetupPlayer(Main plugin) {
+        this.plugin = plugin;
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        Main.getPlugin().setUp(e.getPlayer());
+        plugin.setUp(e.getPlayer());
     }
 }

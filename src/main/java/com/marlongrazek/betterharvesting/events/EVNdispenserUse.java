@@ -19,6 +19,12 @@ import java.util.*;
 
 public class EVNdispenserUse implements Listener {
 
+    private final Main plugin;
+
+    public EVNdispenserUse(Main plugin) {
+        this.plugin = plugin;
+    }
+
     private enum DispensableBlock {
 
         GRASS, TALL_GRASS, DEAD_BUSH, SEAGRASS, TALL_SEAGRASS, NETHER_SPROUTS, FERN, LARGE_FERN, SMALL_DRIPLEAF,
@@ -213,7 +219,7 @@ public class EVNdispenserUse implements Listener {
                 for (Material material : getSurroundingMaterials(place)) if (material != Material.AIR) return;
 
             place.setType(item.getPlacingMaterial());
-            Bukkit.getScheduler().runTaskLater(Main.getPlugin(), () -> dispenser.getInventory().removeItem(e.getItem()), 1);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> dispenser.getInventory().removeItem(e.getItem()), 1);
         }
 
         // dispensable blocks
