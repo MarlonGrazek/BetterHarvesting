@@ -14,10 +14,16 @@ import java.util.Random;
 
 public class EVNwaterCrops2 implements Listener {
 
+    private final Main plugin;
+
+    public EVNwaterCrops2(Main plugin) {
+        this.plugin = plugin;
+    }
+
     @EventHandler
     public void onWatering(WateringEvent e) {
 
-        DataFile settings = Main.getDataFile("settings");
+        DataFile settings = plugin.getDataFile("settings");
         if(!settings.getBoolean("watering.enabled", true)) return;
 
         for (Block block : e.getAffectedBlocks()) {

@@ -22,35 +22,50 @@ public class Main extends JavaPlugin {
 
     private static Main plugin;
 
-    private static final Map<Player, History> history = new HashMap<>();
-    private static final Map<Player, Map<String, Integer>> page = new HashMap<>();
+    private final Map<Player, History> history = new HashMap<>();
+    private final Map<Player, Map<String, Integer>> page = new HashMap<>();
 
     @Override
     public void onEnable() {
 
         plugin = this;
-        Recipes recipes = new Recipes();
-        recipes.setUp();
 
         setUp();
+        registerRecipes();
+        registerCommands();
+        registerEvents();
 
-        getCommand("bhsettings").setExecutor(new CMDsettings());
-
-        PluginManager pm = Bukkit.getPluginManager();
-        pm.registerEvents(new EVNsetupPlayer(), this);
-        pm.registerEvents(new EVNmodifyBlocks(), this);
-        //pm.registerEvents(new EVNdispenserUse(), this);
-        pm.registerEvents(new EVNbonemealPlants(), this);
-        pm.registerEvents(new EVNplayerSneak(), this);
-        pm.registerEvents(new EVNwaterCrops(), this);
-        pm.registerEvents(new EVNhoeHarvesting(), this);
-        pm.registerEvents(new EVNwaterCrops2(), this);
-        pm.registerEvents(new EVNprojectileHit(), this);
-        pm.registerEvents(new EVNshearPlants(), this);
-        pm.registerEvents(new EVNprepareCrafting(), this);
+        checkForUpdates();
 
         Bukkit.getServer().getConsoleSender().sendMessage(getDataFile("config").get("prefix") + " §fsuccessfully enabled");
+    }
 
+    private void registerRecipes() {
+        Recipes recipes = new Recipes(plugin);
+        recipes.setUp();
+    }
+
+    private void registerCommands() {
+        getCommand("bhsettings").setExecutor(new CMDsettings(this));
+        //getCommand("bhsettings").setTabCompleter(new CMDsettings(this));
+    }
+
+    private void registerEvents() {
+        PluginManager pm = Bukkit.getPluginManager();
+        pm.registerEvents(new EVNsetupPlayer(this), this);
+        pm.registerEvents(new EVNmodifyBlocks(this), this);
+        //pm.registerEvents(new EVNdispenserUse(), this);
+        pm.registerEvents(new EVNbonemealPlants(this), this);
+        pm.registerEvents(new EVNplayerSneak(this), this);
+        pm.registerEvents(new EVNwaterCrops(this), this);
+        pm.registerEvents(new EVNhoeHarvesting(this), this);
+        pm.registerEvents(new EVNwaterCrops2(this), this);
+        pm.registerEvents(new EVNprojectileHit(), this);
+        pm.registerEvents(new EVNshearPlants(this), this);
+        pm.registerEvents(new EVNprepareCrafting(this), this);
+    }
+
+    private void checkForUpdates() {
         int spigotID = 98816;
         UpdateChecker.init(this, spigotID)
                 .setDownloadLink("https://www.spigotmc.org/resources/better-harvesting.98816/")
@@ -60,7 +75,7 @@ public class Main extends JavaPlugin {
                 .checkNow();
     }
 
-    public void setUp() {
+    private void setUp() {
 
         DataFile config = new DataFile("config", plugin.getDataFolder().getAbsolutePath());
         DataFile settings = new DataFile("settings", plugin.getDataFolder().getAbsolutePath());
@@ -74,7 +89,7 @@ public class Main extends JavaPlugin {
 
         List<Material> flowers = List.of(Material.POPPY, Material.DANDELION, Material.ALLIUM, Material.AZURE_BLUET,
                 Material.RED_TULIP, Material.ORANGE_TULIP, Material.WHITE_TULIP, Material.PINK_TULIP, Material.LILY_OF_THE_VALLEY,
-                Material.CORNFLOWER, Material.OXEYE_DAISY);
+                Material.CORNFLOWER, Material.OXEYE_DAISY, Material.BLUE_ORCHID);
 
         List<Material> crops = List.of(Material.WHEAT_SEEDS, Material.BEETROOT_SEEDS, Material.POTATO, Material.CARROT,
                 Material.COCOA_BEANS, Material.PUMPKIN_SEEDS, Material.MELON_SEEDS);
@@ -87,81 +102,91 @@ public class Main extends JavaPlugin {
         if (!settings.contains("crafting")) setupPaths.add("crafting");
         saplings.forEach(sapling -> {
             String name = sapling.name().toLowerCase();
-            if (!settings.contains("crafting." + name)) setupPaths.add("crafting." + name);
+            if (!settings.contains("crafting.recipes" + name)) settings.set("crafting.recipes." + name, true);
         });
-        if (!settings.contains("crafting.potion")) setupPaths.add("crafting.potion");
+        if (!settings.contains("crafting.recipes.potion")) settings.set("crafting.recipes.potion", true);
 
-        if (!settings.contains("bonemeal")) setupPaths.add("bonemeal");
-        if (!settings.contains("bonemeal.flowers")) setupPaths.add("bonemeal.flowers");
-        flowers.forEach(flower -> {
-            String name = flower.name().toLowerCase();
-            if (!settings.contains("bonemeal.flowers." + name)) setupPaths.add("bonemeal.flowers." + name);
-        });
-        if (!settings.contains("bonemeal.dead_bush")) setupPaths.add("bonemeal.dead_bush");
-        if (!settings.contains("bonemeal.azalea_leaves")) setupPaths.add("bonemeal.azalea_leaves");
-        if (!settings.contains("bonemeal.nether_sprouts")) setupPaths.add("bonemeal.nether_sprouts");
-        if (!settings.contains("bonemeal.sugar_cane")) setupPaths.add("bonemeal.sugar_cane");
-        if (!settings.contains("bonemeal.cactus")) setupPaths.add("bonemeal.cactus");
-        if (!settings.contains("bonemeal.vine")) setupPaths.add("bonemeal.vine");
-        if (!settings.contains("bonemeal.nether_wart")) setupPaths.add("bonemeal.nether_wart");
-        if (!settings.contains("bonemeal.dirt")) setupPaths.add("bonemeal.dirt");
-        if (!settings.contains("bonemeal.netherrack")) setupPaths.add("bonemeal.netherrack");
-
-        if (!settings.contains("shearing")) setupPaths.add("shearing");
-        if (!settings.contains("shearing.saplings")) setupPaths.add("shearing.saplings");
-        saplings.forEach(sapling -> {
-            String name = sapling.name().toLowerCase();
-            if (!settings.contains("shearing.saplings." + name)) setupPaths.add("shearing.saplings." + name);
-        });
-        if (!settings.contains("shearing.tall_blocks")) setupPaths.add("shearing.tall_blocks");
-        if (!settings.contains("shearing.tall_blocks.tall_grass")) setupPaths.add("shearing.tall_blocks.tall_grass");
-        if (!settings.contains("shearing.tall_blocks.tall_seagrass"))
-            setupPaths.add("shearing.tall_blocks.tall_seagrass");
-        if (!settings.contains("shearing.tall_blocks.large_fern")) setupPaths.add("shearing.tall_blocks.large_fern");
-        if (!settings.contains("shearing.pumpkin")) setupPaths.add("shearing.pumpkin");
-
-        if (!settings.contains("modify")) setupPaths.add("modify");
-        if (!settings.contains("modify.crops")) setupPaths.add("modify.crops");
-        crops.forEach(crop -> {
-            String name = crop.name().toLowerCase();
-            if (!settings.contains("modify.crops." + name)) setupPaths.add("modify.crops." + name);
-        });
-        if (!settings.contains("modify.carved_pumpkin")) setupPaths.add("modify.carved_pumpkin");
-        if (!settings.contains("modify.candle")) setupPaths.add("modify.candle");
-        if (!settings.contains("modify.sea_pickle")) setupPaths.add("modify.sea_pickle");
-        if (!settings.contains("modify.hoe")) setupPaths.add("modify.hoe");
-        if (!settings.contains("modify.hoe.leaves")) setupPaths.add("modify.hoe.leaves");
-        leaves.forEach(leaf -> {
-            String name = leaf.name().toLowerCase();
-            if (!settings.contains("modify.hoe.leaves." + name)) setupPaths.add("modify.hoe.leaves." + name);
-        });
-        if (!settings.contains("modify.hoe.grasses")) setupPaths.add("modify.hoe.grasses");
-        if (!settings.contains("modify.hoe.grasses.grass")) setupPaths.add("modify.hoe.grasses.grass");
-        if (!settings.contains("modify.hoe.grasses.tall_grass")) setupPaths.add("modify.hoe.grasses.tall_grass");
-        if (!settings.contains("modify.hoe.grasses.fern")) setupPaths.add("modify.hoe.grasses.fern");
-        if (!settings.contains("modify.hoe.grasses.large_fern")) setupPaths.add("modify.hoe.grasses.large_fern");
-
-        if (!settings.contains("sneaking")) setupPaths.add("sneaking");
-        if (!settings.contains("sneaking.crops")) setupPaths.add("sneaking.crops");
-        crops.forEach(crop -> {
-            String name = crop.name().toLowerCase();
-            if (!settings.contains("sneaking.crops." + name)) setupPaths.add("sneaking.crops." + name);
-        });
-        if (!settings.contains("sneaking.saplings")) setupPaths.add("sneaking.saplings");
-        saplings.forEach(sapling -> {
-            String name = sapling.name().toLowerCase();
-            if (!settings.contains("sneaking.saplings." + name)) setupPaths.add("sneaking.saplings." + name);
-        });
+        if (!settings.contains("right_clicking")) setupPaths.add("right_clicking");
+        if (!settings.contains("right_clicking.blocks.candle")) settings.set("right_clicking.blocks.candle", true);
+        if (!settings.contains("right_clicking.blocks.sea_pickle"))
+            settings.set("right_clicking.blocks.sea_pickle", true);
+        if (!settings.contains("right_clicking.blocks.carved_pumpkin"))
+            settings.set("right_clicking.blocks.carved_pumpkin", true);
+        if (!settings.contains("right_clicking.blocks.jack_o_lantern"))
+            settings.set("right_clicking.blocks.jack_o_lantern", true);
 
         if (!settings.contains("watering")) setupPaths.add("watering");
 
-        if (!settings.contains("experimental")) setupPaths.add("experimental");
-        if (!settings.contains("experimental.megatrees")) setupPaths.add("experimental.megatrees");
+        if (!settings.contains("crop_harvesting")) setupPaths.add("crop_harvesting");
+        crops.forEach(crop -> {
+            String name = crop.name().toLowerCase();
+            if (!settings.contains("crop_harvesting.crops." + name))
+                settings.set("crop_harvesting.crops." + name, true);
+        });
+        if (!settings.contains("crop_harvesting.tools.no_tool")) settings.set("crop_harvesting.tools.no_tool", true);
+        if (!settings.contains("crop_harvesting.tools.hoe")) settings.set("crop_harvesting.tools.hoe", true);
+        if (!settings.contains("crop_harvesting.fortune")) settings.set("crop_harvesting.fortune", true);
+
+        if (!settings.contains("better_drops")) setupPaths.add("better_drops");
+        leaves.forEach(leaf -> {
+            String name = leaf.name().toLowerCase();
+            if (!settings.contains("better_drops.blocks." + name)) settings.set("better_drops.blocks." + name, true);
+        });
+        if (!settings.contains("better_drops.blocks.grass")) settings.set("better_drops.blocks.grass", true);
+        if (!settings.contains("better_drops.blocks.tall_grass")) settings.set("better_drops.blocks.tall_grass", true);
+        if (!settings.contains("better_drops.blocks.fern")) settings.set("better_drops.blocks.fern", true);
+        if (!settings.contains("better_drops.blocks.large_fern")) settings.set("better_drops.blocks.large_fern", true);
+        if (!settings.contains("better_drops.tools.no_tool")) settings.set("better_drops.tools.no_tool", true);
+        if (!settings.contains("better_drops.tools.hoe")) settings.set("better_drops.tools.hoe", true);
+        if (!settings.contains("better_drops.fortune")) settings.set("better_drops.fortune", true);
+
+        if (!settings.contains("sneaking")) setupPaths.add("sneaking");
+        crops.forEach(crop -> {
+            String name = crop.name().toLowerCase();
+            if (!settings.contains("sneaking.blocks." + name)) settings.set("sneaking.blocks." + name, true);
+        });
+        saplings.forEach(sapling -> {
+            String name = sapling.name().toLowerCase();
+            if (!settings.contains("sneaking.blocks." + name)) settings.set("sneaking.blocks." + name, true);
+        });
+        if (!settings.contains("sneaking.range")) settings.set("sneaking.range", 3);
+        if (!settings.contains("sneaking.chance")) settings.set("sneaking.chance", 10);
+
+        if (!settings.contains("shearing")) setupPaths.add("shearing");
+        saplings.forEach(sapling -> {
+            String name = sapling.name().toLowerCase();
+            if (!settings.contains("shearing.blocks." + name)) settings.set("shearing.blocks." + name, true);
+        });
+        if (!settings.contains("shearing.blocks.tall_grass")) settings.set("shearing.blocks.tall_grass", true);
+        if (!settings.contains("shearing.blocks.tall_seagrass")) settings.set("shearing.blocks.tall_seagrass", true);
+        if (!settings.contains("shearing.blocks.large_fern")) settings.set("shearing.blocks.large_fern", true);
+
+        if (!settings.contains("bonemealing")) setupPaths.add("bonemealing");
+        if (!settings.contains("bonemealing.blocks.sugar_cane")) settings.set("bonemealing.blocks.sugar_cane", true);
+        if (!settings.contains("bonemealing.blocks.cactus")) settings.set("bonemealing.blocks.cactus", true);
+        if (!settings.contains("bonemealing.blocks.vine")) settings.set("bonemealing.blocks.vine", true);
+        if (!settings.contains("bonemealing.blocks.dead_bush")) settings.set("bonemealing.blocks.dead_bush", true);
+        if (!settings.contains("bonemealing.blocks.nether_wart"))
+            settings.set("bonemealing.blocks.nether_wart", true);
+        if (!settings.contains("bonemealing.blocks.dirt")) settings.set("bonemealing.blocks.dirt", true);
+        if (!settings.contains("bonemealing.blocks.netherrack")) settings.set("bonemealing.blocks.netherrack", true);
+        if (!settings.contains("bonemealing.blocks.nether_sprouts"))
+            settings.set("bonemealing.blocks.nether_sprouts", true);
+        if (!settings.contains("bonemealing.blocks.azalea_leaves"))
+            settings.set("bonemealing.blocks.azalea_leaves", true);
+        flowers.forEach(flower -> {
+            String name = flower.name().toLowerCase();
+            if (!settings.contains("bonemealing.blocks." + name)) settings.set("bonemealing.blocks." + name, true);
+        });
+
+        if (!settings.contains("experimental")) {
+            settings.set("experimental.enabled", false);
+            settings.set("experimental.permissions", new ArrayList<>());
+        }
+        if (!settings.contains("experimental.settings.mega_trees")) settings.set("experimental.settings.mega_trees", false);
 
         setupPaths.forEach(path -> {
             settings.set(path + ".enabled", true);
-            if (path.equals("experimental") || path.equals("experimental.megatrees"))
-                settings.set(path + ".enabled", false);
             settings.set(path + ".permissions", new ArrayList<>());
         });
 
@@ -173,11 +198,7 @@ public class Main extends JavaPlugin {
         page.put(player, new HashMap<>());
     }
 
-    public static Main getPlugin() {
-        return plugin;
-    }
-
-    public static DataFile getDataFile(String name) {
+    public DataFile getDataFile(String name) {
 
         DataFile dataFile = null;
         for (File file : plugin.getDataFolder().listFiles())
@@ -185,11 +206,11 @@ public class Main extends JavaPlugin {
         return dataFile;
     }
 
-    public static History getHistory(Player player) {
+    public History getHistory(Player player) {
         return history.get(player);
     }
 
-    public static Map<String, Integer> getPage(Player player) {
+    public Map<String, Integer> getPage(Player player) {
         return page.get(player);
     }
 }

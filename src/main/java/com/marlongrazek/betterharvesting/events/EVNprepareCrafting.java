@@ -15,6 +15,12 @@ import java.util.List;
 
 public class EVNprepareCrafting implements Listener {
 
+    private final Main plugin;
+
+    public EVNprepareCrafting(Main plugin) {
+        this.plugin = plugin;
+    }
+
     @EventHandler
     public void onCraft(PrepareItemCraftEvent e) {
 
@@ -22,23 +28,21 @@ public class EVNprepareCrafting implements Listener {
 
         if (recipe == null) return;
 
-        DataFile config = Main.getDataFile("settings");
+        DataFile config = plugin.getDataFile("settings");
         String result = recipe.getResult().getType().name().toLowerCase();
 
         // no custom recipe
-        if (!config.contains("crafting." + result)) return;
+        if (!config.contains("crafting.recipes." + result)) return;
 
         // recipe disabled
         if (!config.getBoolean("crafting.enabled", true) ||
-                !config.getBoolean("crafting." + result + ".enabled", true)) {
+                !config.getBoolean("crafting.recipes." + result, true)) {
             e.getInventory().setResult(new ItemStack(Material.AIR));
             return;
         }
 
         // permissions
         List<String> permissions = new ArrayList<>(config.getStringList("crafting.permissions"));
-        permissions.addAll(config.getStringList("crafting." + result + ".permissions"));
-
         boolean hasPermission = false;
 
         if (!permissions.isEmpty()) {

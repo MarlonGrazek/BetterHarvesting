@@ -16,39 +16,39 @@ import java.util.*;
 
 public class EVNplayerSneak implements Listener {
 
-    int taskid;
+    private final Main plugin;
+    private int taskid;
+
+    public EVNplayerSneak(Main plugin) {
+        this.plugin = plugin;
+    }
 
     @EventHandler
     public void onGrow(PlayerToggleSneakEvent e) {
 
         if (e.isSneaking()) {
 
-            DataFile config = Main.getDataFile("config");
-            taskid = Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(), () -> {
+            taskid = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
 
                 Player player = e.getPlayer();
                 Location playerLocation = player.getLocation().getBlock().getLocation();
 
-                for (double x = playerLocation.getX() - 3; x < playerLocation.getX() + 4; x++) {
-                    for (double z = playerLocation.getZ() - 3; z < playerLocation.getZ() + 4; z++) {
+                DataFile settings = plugin.getDataFile("settings");
+                if (!settings.getBoolean("sneaking.enabled", true)) return;
+
+                List<String> permissions = new ArrayList<>(settings.getStringList("sneaking.permissions"));
+                if(!hasPermissionFromList(player, permissions)) return;
+
+                int range = settings.getInt("sneaking.range");
+
+                for (double x = playerLocation.getX() - range; x <= playerLocation.getX() + range; x++) {
+                    for (double z = playerLocation.getZ() - range; z <= playerLocation.getZ() + range; z++) {
 
                         Random random = new Random();
-                        int randomInt = random.nextInt(100);
+                        int randomInt = random.nextInt(100) + 1;
 
                         Location cropLocation = new Location(playerLocation.getWorld(), x, playerLocation.getY(), z);
-
-                        DataFile settings = Main.getDataFile("settings");
-
-                        if (!settings.getBoolean("sneaking.enabled", true)) continue;
-
-                        List<String> permissions = new ArrayList<>(settings.getStringList("sneaking.permissions"));
-
-                        String category = "";
                         String item = cropLocation.getBlock().getType().name().toLowerCase();
-
-                        if (List.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.COCOA, Material.MELON_STEM,
-                                Material.PUMPKIN_STEM).contains(cropLocation.getBlock().getType())) category = ".crops";
-                        else if (cropLocation.getBlock().getBlockData() instanceof Sapling) category = ".saplings";
 
                         switch (cropLocation.getBlock().getType()) {
                             case WHEAT -> item = "wheat_seeds";
@@ -60,33 +60,16 @@ public class EVNplayerSneak implements Listener {
                             case PUMPKIN_STEM -> item = "pumpkin_seeds";
                         }
 
-                        if (!settings.getBoolean("sneaking.enabled", true)) continue;
-                        if (!category.isEmpty())
-                            if (!settings.getBoolean("sneaking" + category + ".enabled", true)) continue;
-                        if (!settings.getBoolean("sneaking" + category + "." + item + ".enabled", true)) continue;
+                        if(!settings.getBoolean("sneaking.blocks." + item, true)) continue;
 
-                        if (!category.isEmpty())
-                            permissions.addAll(settings.getStringList("sneaking" + category + ".permissions"));
-                        permissions.addAll(settings.getStringList("sneaking" + category + "." + item + ".permissions"));
-
-                        boolean hasPermission = false;
-                        if (!permissions.isEmpty()) {
-                            for (String permission : permissions) {
-                                if (e.getPlayer().hasPermission(permission)) {
-                                    hasPermission = true;
-                                    break;
-                                }
-                            }
-                        } else hasPermission = true;
-
-                        if (!hasPermission) continue;
+                        int chance = settings.getInt("sneaking.chance");
 
                         // crops
                         if (cropLocation.getBlock().getBlockData() instanceof Ageable) {
 
                             Ageable crop = (Ageable) cropLocation.getBlock().getBlockData();
 
-                            if (randomInt > 10) continue;
+                            if (randomInt > chance) continue;
                             if (crop.getAge() == crop.getMaximumAge()) continue;
 
                             crop.setAge(crop.getAge() + 1);
@@ -99,12 +82,22 @@ public class EVNplayerSneak implements Listener {
                         // saplings
                         else if (cropLocation.getBlock().getBlockData() instanceof Sapling) {
 
-                            if (randomInt > 10) continue;
+                            if (randomInt > chance) continue;
+
+                            // experimental disabled
+                            boolean experimental_enabled = settings.getBoolean("experimental.enabled", false);
+
+                            // no permission
+                            List<String> experimental_permissions = settings.getStringList("experimental.permissions");
+                            boolean hasPermission = hasPermissionFromList(player, experimental_permissions);
+
+                            // mega trees disabled
+                            boolean mega_trees_enabled = settings.getBoolean("experimental.settings.mega_trees", false);
 
                             List<Block> megaTreeSaplings = fourSaplingLocations(cropLocation.getBlock());
                             boolean megaTree = megaTreeSaplings != null;
 
-                            if (megaTree && config.getBoolean("experimental.megatrees.enabled", false)) {
+                            if (experimental_enabled && mega_trees_enabled && megaTree && hasPermission) {
 
                                 for (Block block : megaTreeSaplings) {
 
@@ -116,7 +109,7 @@ public class EVNplayerSneak implements Listener {
                                         player.spawnParticle(Particle.VILLAGER_HAPPY, block.getX() + 0.5,
                                                 block.getY(), block.getZ() + 0.5, 5, 0.25, 0, 0.25);
                                     } else {
-                                        generateTree(megaTreeSaplings.get(0).getLocation(), sapling, megaTree);
+                                        generateTree(megaTreeSaplings.get(0).getLocation(), sapling, true);
                                         break;
                                     }
                                 }
@@ -130,7 +123,7 @@ public class EVNplayerSneak implements Listener {
                                     cropLocation.getBlock().setBlockData(sapling);
                                     player.spawnParticle(Particle.VILLAGER_HAPPY, cropLocation.getX() + 0.5,
                                             cropLocation.getY(), cropLocation.getZ() + 0.5, 5, 0.25, 0, 0.25);
-                                } else generateTree(cropLocation, sapling, megaTree);
+                                } else generateTree(cropLocation, sapling, false);
                             }
                         }
                     }
@@ -248,5 +241,11 @@ public class EVNplayerSneak implements Listener {
 
         if (saplingLocations.isEmpty()) return null;
         return saplingLocations;
+    }
+
+    public boolean hasPermissionFromList(Player player, List<String> permissions) {
+        if (permissions.isEmpty()) return true;
+        for (String permission : permissions) if (player.hasPermission(permission)) return true;
+        return false;
     }
 }
