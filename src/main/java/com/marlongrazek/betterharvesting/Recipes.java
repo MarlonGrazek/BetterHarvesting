@@ -16,6 +16,12 @@ import java.util.List;
 
 public class Recipes {
 
+    private final Main plugin;
+
+    public Recipes(Main plugin) {
+        this.plugin = plugin;
+    }
+
     public enum SaplingType {
         ACACIA, AZALEA, BIRCH, DARK_OAK, FLOWERING_AZALEA, JUNGLE, OAK, SPRUCE;
 
@@ -64,7 +70,7 @@ public class Recipes {
         meta.setBasePotionData(data);
         waterBottle.setItemMeta(meta);
 
-        NamespacedKey key = new NamespacedKey(Main.getPlugin(), "water_bottle");
+        NamespacedKey key = new NamespacedKey(plugin, "water_bottle");
         ShapelessRecipe recipe = new ShapelessRecipe(key, waterBottle);
 
         recipe.addIngredient(Material.GLASS_BOTTLE);
@@ -77,7 +83,7 @@ public class Recipes {
 
         ItemStack sapling = new ItemStack(type.getSapling());
 
-        NamespacedKey key = new NamespacedKey(Main.getPlugin(), type.name().toLowerCase() + "_sapling");
+        NamespacedKey key = new NamespacedKey(plugin, type.name().toLowerCase() + "_sapling");
         ShapedRecipe recipe = new ShapedRecipe(key, sapling);
 
         recipe.shape("L", "D");

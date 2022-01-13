@@ -10,9 +10,12 @@ import org.bukkit.entity.Player;
 import java.util.Objects;
 
 public class PluginCommand implements CommandExecutor {
-    private final CommandInfo commandInfo;
 
-    public PluginCommand() {
+    private final CommandInfo commandInfo;
+    private final Main plugin;
+
+    public PluginCommand(Main plugin) {
+        this.plugin = plugin;
         commandInfo = getClass().getDeclaredAnnotation(CommandInfo.class);
         Objects.requireNonNull(commandInfo, "Plugins must have CommandInfo annotations");
     }
@@ -25,7 +28,7 @@ public class PluginCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String lbl, String[] args) {
 
         if(!commandInfo.permission().isEmpty() && !sender.hasPermission(commandInfo.permission())) {
-            DataFile config = Main.getDataFile("config");
+            DataFile config = plugin.getDataFile("config");
             String prefix = config.getString("prefix");
             String no_permission = config.getString("no_permission");
             sender.sendMessage(prefix + " §7| " + no_permission);

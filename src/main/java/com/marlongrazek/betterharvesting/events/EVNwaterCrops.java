@@ -15,6 +15,12 @@ import java.util.Random;
 
 public class EVNwaterCrops implements Listener {
 
+    private final Main plugin;
+
+    public EVNwaterCrops(Main plugin) {
+        this.plugin = plugin;
+    }
+
     @EventHandler
     public void onHit(ProjectileHitEvent e) {
 
@@ -23,7 +29,7 @@ public class EVNwaterCrops implements Listener {
             ThrownPotion potion = (ThrownPotion) e.getEntity();
             Location location = potion.getLocation().getBlock().getLocation();
 
-            DataFile settings = Main.getDataFile("settings");
+            DataFile settings = plugin.getDataFile("settings");
             if(!settings.getBoolean("watering.enabled", true)) return;
 
             for (double x = location.getX() - 1; x < location.getX() + 2; x++) {

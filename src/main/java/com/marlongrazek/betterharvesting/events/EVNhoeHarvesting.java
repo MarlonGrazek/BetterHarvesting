@@ -2,18 +2,17 @@ package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
 import com.marlongrazek.datafile.DataFile;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.data.type.Leaves;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.ExperienceOrb;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +20,12 @@ import java.util.List;
 import java.util.Random;
 
 public class EVNhoeHarvesting implements Listener {
+
+    private final Main plugin;
+
+    public EVNhoeHarvesting(Main plugin) {
+        this.plugin = plugin;
+    }
 
     public enum leaves {
         AZALEA_LEAVES, ACACIA_LEAVES, BIRCH_LEAVES, DARK_OAK_LEAVES, FLOWERING_AZALEA_LEAVES, JUNGLE_LEAVES, OAK_LEAVES,
@@ -61,6 +66,8 @@ public class EVNhoeHarvesting implements Listener {
     @EventHandler
     public void onBreak(BlockBreakEvent e) {
 
+        if(e.getPlayer().getGameMode() == GameMode.CREATIVE) return;
+
         ItemStack tool = e.getPlayer().getInventory().getItemInMainHand();
 
         ArrayList<Material> hoes = new ArrayList<>(Arrays.asList(Material.WOODEN_HOE, Material.STONE_HOE,
@@ -69,52 +76,39 @@ public class EVNhoeHarvesting implements Listener {
         ArrayList<Material> plants = new ArrayList<>(Arrays.asList(Material.GRASS, Material.TALL_GRASS,
                 Material.FERN, Material.LARGE_FERN));
 
-        DataFile settings = Main.getDataFile("settings");
-        if (!settings.getBoolean("modify.enabled", true)) return;
+        DataFile settings = plugin.getDataFile("settings");
 
-        List<String> permissions = new ArrayList<>(settings.getStringList("modify.permissions"));
+        boolean enabled = settings.getBoolean("better_drops.enabled", true);
+        boolean no_item_enabled = settings.getBoolean("better_drops.tools.no_tool", true);
+        boolean hoe_enabled = settings.getBoolean("better_drops.tools.hoe", true);
 
-        String category = "";
-        String item = e.getBlock().getType().name().toLowerCase();
+        boolean fortune_enabled = settings.getBoolean("better_drops.fortune", true);
 
-        if (List.of(Material.ACACIA_LEAVES, Material.AZALEA_LEAVES, Material.DARK_OAK_LEAVES,
-                Material.FLOWERING_AZALEA_LEAVES, Material.JUNGLE_LEAVES, Material.OAK_LEAVES,
-                Material.SPRUCE_LEAVES).contains(e.getBlock().getType())) {
-            category = ".leaves";
-        } else if (List.of(Material.GRASS, Material.TALL_GRASS, Material.FERN, Material.LARGE_FERN).
-                contains(e.getBlock().getType())) {
-            category = ".grasses";
-        }
-
-        if (!settings.getBoolean("modify.enabled", true)) return;
-        if (!category.isEmpty()) if (!settings.getBoolean("modify.hoe.enabled", true)) return;
-        if (!category.isEmpty())
-            if (!settings.getBoolean("modify.hoe" + category + ".enabled", true)) return;
-        if (!settings.getBoolean("modify.hoe" + category + "." + item + ".enabled", true)) return;
-
-        if (!category.isEmpty()) permissions.addAll(settings.getStringList("modify.hoe" + ".permissions"));
-        if (!category.isEmpty()) permissions.addAll(settings.getStringList("modify.hoe" + category + ".permissions"));
-        permissions.addAll(settings.getStringList("modify.hoe" + category + "." + item + ".permissions"));
-
-        boolean hasPermission = false;
-        if (!permissions.isEmpty()) {
-            for (String permission : permissions) {
-                if (e.getPlayer().hasPermission(permission)) {
-                    hasPermission = true;
-                    break;
-                }
-            }
-        } else hasPermission = true;
-
-        if (!hasPermission) return;
-
-        if (!hoes.contains(tool.getType())) return;
+        List<String> harvesting_permissions = settings.getStringList("better_drops.permissions");
 
         Random random = new Random();
         int randomInt = random.nextInt(100);
         Location location = e.getBlock().getLocation();
 
-        int multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
+        if (!enabled) return;
+
+        if (tool == null || tool.getType() == Material.AIR) {
+            if (!no_item_enabled) return;
+        } else if (hoes.contains(tool.getType())) {
+            if (!hoe_enabled) return;
+        } else return;
+
+        // no permission
+        if (!hasPermissionFromList(e.getPlayer(), harvesting_permissions)) return;
+
+        // block disabled
+        String materialName = e.getBlock().getType().name().toLowerCase();
+        if (!settings.getBoolean("better_drops.blocks." + materialName, true)) return;
+
+        // mutliplier
+        int multiplier = 1;
+        if (tool != null && fortune_enabled)
+            multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
 
         // grass
         if (plants.contains(e.getBlock().getType())) {
@@ -186,5 +180,11 @@ public class EVNhoeHarvesting implements Listener {
         }
 
         return multiplier;
+    }
+
+    public boolean hasPermissionFromList(Player player, List<String> permissions) {
+        if (permissions.isEmpty()) return true;
+        for (String permission : permissions) if (player.hasPermission(permission)) return true;
+        return false;
     }
 }
