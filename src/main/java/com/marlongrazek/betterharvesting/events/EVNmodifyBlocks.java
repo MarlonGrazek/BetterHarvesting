@@ -84,7 +84,7 @@ public class EVNmodifyBlocks implements Listener {
                 }
             }
 
-            if (!settings.getBoolean("crop_harvesting.crops." + clicked, true)) return;
+            if (!settings.getBoolean("crop_harvesting.crops." + clicked, false)) return;
 
             if (block.getType() == Material.SWEET_BERRY_BUSH) return;
 

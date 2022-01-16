@@ -3,9 +3,21 @@ version: '${project.version}'
 main: com.marlongrazek.betterharvesting.main.Main
 api-version: 1.18
 author: MarlonGrazek
+description: "Better Harvesting is a plugin that adds a lot of useful and
+              logical features to make harvesting a better and easier experience"
 
 commands:
      bhsettings:
           description: opens the settings
+          usage: /bhsettings [setting]
           aliases:
             - bhs
+            - better_harvesting_settings
+            - betterharvestingsettings
+            - bh_settings
+     betterharvesting:
+          description: Show the plugin information
+          usage: /betterharvesting [help]
+          aliases:
+            - bh
+            - better_harvesting

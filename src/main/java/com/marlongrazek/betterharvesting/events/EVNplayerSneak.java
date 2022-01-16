@@ -64,7 +64,7 @@ public class EVNplayerSneak implements Listener {
                             }
                         }
 
-                        if (!settings.getBoolean("sneaking.blocks." + item, true)) continue;
+                        if(!settings.getBoolean("sneaking.blocks." + item, false)) continue;
 
                         int chance = settings.getInt("sneaking.chance");
 
