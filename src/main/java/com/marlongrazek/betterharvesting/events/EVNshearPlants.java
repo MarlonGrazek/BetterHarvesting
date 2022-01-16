@@ -92,7 +92,7 @@ public class EVNshearPlants implements Listener {
 
         // block disabled
         String item = e.getClickedBlock().getType().name().toLowerCase();
-        if (!settings.getBoolean("shearing.blocks." + item, true)) return;
+        if (!settings.getBoolean("shearing.blocks." + item, false)) return;
 
         e.setCancelled(true);
 

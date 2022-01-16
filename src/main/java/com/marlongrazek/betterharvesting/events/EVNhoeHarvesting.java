@@ -103,7 +103,7 @@ public class EVNhoeHarvesting implements Listener {
 
         // block disabled
         String materialName = e.getBlock().getType().name().toLowerCase();
-        if (!settings.getBoolean("better_drops.blocks." + materialName, true)) return;
+        if (!settings.getBoolean("better_drops.blocks." + materialName, false)) return;
 
         // mutliplier
         int multiplier = 1;

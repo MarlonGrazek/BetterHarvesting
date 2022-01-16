@@ -36,7 +36,7 @@ public class EVNprepareCrafting implements Listener {
 
         // recipe disabled
         if (!config.getBoolean("crafting.enabled", true) ||
-                !config.getBoolean("crafting.recipes." + result, true)) {
+                !config.getBoolean("crafting.recipes." + result, false)) {
             e.getInventory().setResult(new ItemStack(Material.AIR));
             return;
         }

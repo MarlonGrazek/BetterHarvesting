@@ -60,7 +60,7 @@ public class EVNplayerSneak implements Listener {
                             case PUMPKIN_STEM -> item = "pumpkin_seeds";
                         }
 
-                        if(!settings.getBoolean("sneaking.blocks." + item, true)) continue;
+                        if(!settings.getBoolean("sneaking.blocks." + item, false)) continue;
 
                         int chance = settings.getInt("sneaking.chance");
 

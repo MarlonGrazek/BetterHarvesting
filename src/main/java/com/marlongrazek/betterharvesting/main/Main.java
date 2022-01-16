@@ -1,5 +1,6 @@
 package com.marlongrazek.betterharvesting.main;
 
+import com.marlongrazek.betterharvesting.commands.CMDbetterharvesting;
 import com.marlongrazek.betterharvesting.commands.CMDsettings;
 import com.marlongrazek.datafile.DataFile;
 import com.marlongrazek.betterharvesting.Recipes;
@@ -46,6 +47,7 @@ public class Main extends JavaPlugin {
     }
 
     private void registerCommands() {
+        getCommand("betterharvesting").setExecutor(new CMDbetterharvesting(this));
         getCommand("bhsettings").setExecutor(new CMDsettings(this));
         //getCommand("bhsettings").setTabCompleter(new CMDsettings(this));
     }

@@ -80,7 +80,7 @@ public class EVNbonemealPlants implements Listener {
 
         // block disabled
         String item = e.getClickedBlock().getType().name().toLowerCase();
-        if (!settings.getBoolean("bonemealing.blocks." + item, true)) return;
+        if (!settings.getBoolean("bonemealing.blocks." + item, false)) return;
 
         List<Material> bonemealableBlocks = new ArrayList<>();
         for (BonemealableBlock block : BonemealableBlock.values()) bonemealableBlocks.add(block.getMaterial());
