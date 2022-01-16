@@ -1,9 +1,10 @@
 package com.marlongrazek.betterharvesting.events;
 
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Ageable;
+import org.bukkit.block.data.type.Sapling;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -13,157 +14,123 @@ import java.util.*;
 
 public class EVNwaterPlants implements Listener {
 
-    private static final String newMaterialKey = "new_material";
-    private static final String growingKey = "growing";
-    private static final String requiresKey = "requires";
-
-    private enum WaterablePlant {
-
-        GRASS_BLOCK, DIRT, POPPY, DANDELION, BLUE_ORCHID, ALLIUM, AZURE_BLUET, RED_TULIP, ORANGE_TULIP, WHITE_TULIP,
-        PINK_TULIP, OXEYE_DAISY, CORNFLOWER, LILY_OF_THE_VALLEY, GRASS, TALL_GRASS, FERN, LARGE_FERN, ACACIA_SAPLING,
-        AZALEA, BIRCH_SAPLING, DARK_OAK_SAPLING, FLOWERING_AZALEA, JUNGLE_SAPLING, OAK_SAPLING, SPRUCE_SAPLING;
-
-        private Material material;
-
-        private final Map<String, Object> wateringData = new HashMap<>();
-        private final Map<String, Object> poisoningData = new HashMap<>();
-
-        static {
-
-            for (WaterablePlant plant : WaterablePlant.values()) plant.material = Material.valueOf(plant.name());
-
-            List<WaterablePlant> flowers = Arrays.asList(POPPY, DANDELION, BLUE_ORCHID, ALLIUM, AZURE_BLUET, RED_TULIP,
-                    ORANGE_TULIP, WHITE_TULIP, PINK_TULIP, OXEYE_DAISY, CORNFLOWER, LILY_OF_THE_VALLEY);
-
-            GRASS_BLOCK.wateringData.put(growingKey, new HashMap<>() {{
-                put(Material.GRASS, 10);
-                put(Material.TALL_GRASS, 6);
-                flowers.forEach(flower -> put(Material.valueOf(flower.name()), 2));
-            }});
-
-            GRASS_BLOCK.poisoningData.put(newMaterialKey, new HashMap<>() {{
-                put(Material.DIRT, 20);
-                put(Material.MYCELIUM, 20);
-            }});
-
-            DIRT.wateringData.put(newMaterialKey, Collections.singletonMap(Material.GRASS_BLOCK, 20));
-            DIRT.poisoningData.put(newMaterialKey, Collections.singletonMap(Material.MYCELIUM, 20));
-
-            flowers.forEach(flower -> {
-
-                flower.poisoningData.put(newMaterialKey, new HashMap<>() {{
-                    put(Material.AIR, 20);
-                    put(Material.RED_MUSHROOM, 10);
-                    put(Material.BROWN_MUSHROOM, 10);
-                    put(Material.WITHER_ROSE, 1);
-                }});
-
-                flower.poisoningData.put(requiresKey, new HashMap<>() {{
-                    put(Material.RED_MUSHROOM, Material.MYCELIUM);
-                    put(Material.BROWN_MUSHROOM, Material.MYCELIUM);
-                }});
-            });
-
-            GRASS.wateringData.put(newMaterialKey, Collections.singletonMap(TALL_GRASS, 20));
-            TALL_GRASS.poisoningData.put(newMaterialKey, Collections.singletonMap(GRASS, 20));
-
-            FERN.wateringData.put(newMaterialKey, Collections.singletonMap(LARGE_FERN, 20));
-            LARGE_FERN.poisoningData.put(newMaterialKey, Collections.singletonMap(FERN, 20));
-
-            Arrays.asList(ACACIA_SAPLING, AZALEA, BIRCH_SAPLING, DARK_OAK_SAPLING, FLOWERING_AZALEA,
-                    JUNGLE_SAPLING, OAK_SAPLING, SPRUCE_SAPLING).forEach(sapling ->
-                    sapling.poisoningData.put(newMaterialKey, Collections.singletonMap(Material.DEAD_BUSH, 20)));
-
-            AZALEA.wateringData.put(newMaterialKey, Collections.singletonMap(Material.FLOWERING_AZALEA, 20));
-        }
-
-        public Material getMaterial() {
-            return material;
-        }
-
-        public Map<String, Object> getWateringData() {
-            return wateringData;
-        }
-
-        public Map<String, Object> getPoisoningData() {
-            return poisoningData;
-        }
-
-    }
-
     @EventHandler
-    public void onWatering(ProjectileHitEvent e) {
+    public void onHit(ProjectileHitEvent e) {
 
         if (!(e.getEntity() instanceof ThrownPotion)) return;
 
+        Block hitblock = e.getHitBlock();
+        Block plant = hitblock.getRelative(BlockFace.UP);
+
+        ThrownPotion potion = (ThrownPotion) e.getEntity();
+        boolean isPoisonous = !potion.getEffects().isEmpty();
+
         Random random = new Random();
+        int randomInt = random.nextInt(100) + 1;
 
-        Block hitBlock = e.getHitBlock();
-        Block plant = hitBlock.getRelative(BlockFace.UP);
-        List<Block> area = getAffectedBlocks(hitBlock);
-        boolean isPoisonous = !((ThrownPotion) e.getEntity()).getEffects().isEmpty();
+        List<Material> flowers = List.of(Material.DANDELION, Material.POPPY, Material.BLUE_ORCHID, Material.ALLIUM,
+                Material.AZURE_BLUET, Material.RED_TULIP, Material.ORANGE_TULIP, Material.WHITE_TULIP,
+                Material.PINK_TULIP, Material.OXEYE_DAISY, Material.CORNFLOWER, Material.LILY_OF_THE_VALLEY);
 
-        List<Material> waterablePlants = new ArrayList<>();
-        for (WaterablePlant waterablePlant : WaterablePlant.values()) waterablePlants.add(waterablePlant.getMaterial());
+        // water
+        if (!isPoisonous) {
 
-        area.forEach(block -> {
+            if (plant.getBlockData() instanceof Ageable) {
 
-            WaterablePlant waterablePlant;
+                Ageable ageable = (Ageable) plant.getBlockData();
 
-            if (waterablePlants.contains(hitBlock.getType()))
-                waterablePlant = WaterablePlant.valueOf(hitBlock.getType().name());
-            else waterablePlant = WaterablePlant.valueOf(plant.getType().name());
-
-            if (waterablePlants.contains(hitBlock.getType())) {
-
-                Map<String, Object> data;
-
-                if (isPoisonous) data = waterablePlant.getPoisoningData();
-                else data = waterablePlant.getWateringData();
-
-                data.keySet().forEach(key -> {
-
-                    switch (key) {
-                        case newMaterialKey -> {
-                            Map<Material, Integer> newMaterial = (Map<Material, Integer>) data.get(key);
-                            for (Material material : newMaterial.keySet()) {
-                                if(random.nextInt(100) <= newMaterial.get(material)) {
-                                    hitBlock.setType(material);
-                                    break;
-                                }
-                            }
-                        }
-                        case growingKey -> {
-                            Map<Material, Integer> growing = (Map<Material, Integer>) data.get(key);
-                            for (Material material : growing.keySet()) {
-                                if(random.nextInt(100) <= growing.get(material)) {
-                                    plant.setType(material);
-                                    break;
-                                }
-                            }
-                        }
+                if (randomInt <= 40) {
+                    if (ageable.getAge() != ageable.getMaximumAge()) {
+                        ageable.setAge(ageable.getAge() + 1);
+                        plant.setBlockData(ageable);
                     }
-                });
+                }
             }
-        });
-    }
 
-    public List<Block> getAffectedBlocks(Block hitBlock) {
+            // azalea -> flowering azalea
+            else if (plant.getType() == Material.AZALEA) if (randomInt <= 15) plant.setType(Material.FLOWERING_AZALEA);
 
-        List<Block> affectedBlocks = new ArrayList<>();
+                // grass -> tall grass
+            else if (plant.getType() == Material.GRASS) if (randomInt <= 20) plant.setType(Material.TALL_GRASS);
 
-        for (double x = hitBlock.getLocation().getX() - 1; x < hitBlock.getLocation().getX() + 2; x++) {
-            for (double z = hitBlock.getLocation().getZ() - 1; z < hitBlock.getLocation().getZ() + 2; z++) {
+                // fern -> large fern
+            else if (plant.getType() == Material.FERN) if (randomInt <= 20) plant.setType(Material.LARGE_FERN);
 
-                Location location = new Location(hitBlock.getLocation().getWorld(), x, hitBlock.getLocation().getY(), z);
 
-                Random random = new Random();
-                int randomInt = random.nextInt(100);
+            // dirt -> grass block
+            if (hitblock.getType() == Material.DIRT) if (randomInt <= 20) hitblock.setType(Material.GRASS_BLOCK);
 
-                if (randomInt < 30) affectedBlocks.add(location.getBlock());
+            if (hitblock.getType() == Material.GRASS_BLOCK && plant.getType() == Material.AIR) {
+
+                if (randomInt <= 10) plant.setType(Material.GRASS);
+                else if (randomInt > 10 && randomInt <= 16) plant.setType(Material.TALL_GRASS);
+
+                for (Material flower : flowers) {
+                    if (randomInt > 16 && randomInt <= 18) {
+                        plant.setType(flower);
+                        break;
+                    }
+                }
             }
         }
 
-        return affectedBlocks;
+        // poison
+        else {
+
+            // crops
+            if (plant.getBlockData() instanceof Ageable) {
+
+                Ageable ageable = (Ageable) plant.getBlockData();
+
+                if (randomInt <= 5 || ageable.getAge() <= 1) plant.setType(Material.AIR);
+                else {
+                    ageable.setAge(ageable.getAge() - 1);
+                    plant.setBlockData(ageable);
+                }
+            }
+
+            // saplings -> dead bush
+            else if (plant.getBlockData() instanceof Sapling) if (randomInt <= 15) plant.setType(Material.DEAD_BUSH);
+
+                // tall grass -> grass
+            else if (plant.getType() == Material.TALL_GRASS) if (randomInt <= 20) plant.setType(Material.GRASS);
+
+                // large fern -> fern
+            else if (plant.getType() == Material.LARGE_FERN) if (randomInt <= 20) plant.setType(Material.FERN);
+
+            // flower -> mushroom or wither rose
+            else if(flowers.contains(plant.getType())) {
+                if(randomInt <= 3) {
+                    hitblock.setType(Material.MYCELIUM);
+                    plant.setType(Material.RED_MUSHROOM);
+                }
+                else if(randomInt > 3 && randomInt <= 6) {
+                    hitblock.setType(Material.MYCELIUM);
+                    plant.setType(Material.BROWN_MUSHROOM);
+                }
+                else if(randomInt == 69) plant.setType(Material.WITHER_ROSE);
+                else if(randomInt > 10 && randomInt <= 20) plant.setType(Material.AIR);
+            }
+
+
+            // dirt -> mycelium
+            if (hitblock.getType() == Material.DIRT) {
+                if (randomInt <= 20) {
+                    hitblock.setType(Material.MYCELIUM);
+                    plant.setType(Material.AIR);
+                }
+            }
+
+            // grass block -> dirt or mycelium
+            else if (hitblock.getType() == Material.GRASS_BLOCK) {
+                if (randomInt <= 20) {
+                    hitblock.setType(Material.DIRT);
+                    plant.setType(Material.AIR);
+                } else if (randomInt > 20 && randomInt <= 40) {
+                    hitblock.setType(Material.MYCELIUM);
+                    plant.setType(Material.AIR);
+                }
+            }
+        }
     }
 }
