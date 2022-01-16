@@ -37,7 +37,7 @@ public class EVNplayerSneak implements Listener {
                 if (!settings.getBoolean("sneaking.enabled", true)) return;
 
                 List<String> permissions = new ArrayList<>(settings.getStringList("sneaking.permissions"));
-                if(!hasPermissionFromList(player, permissions)) return;
+                if (!hasPermissionFromList(player, permissions)) return;
 
                 int range = settings.getInt("sneaking.range");
 
@@ -48,7 +48,7 @@ public class EVNplayerSneak implements Listener {
                         int randomInt = random.nextInt(100) + 1;
 
                         Location cropLocation = new Location(playerLocation.getWorld(), x, playerLocation.getY(), z);
-                        String item = cropLocation.getBlock().getType().name().toLowerCase();
+                        String item;
 
                         switch (cropLocation.getBlock().getType()) {
                             case WHEAT -> item = "wheat_seeds";
@@ -58,6 +58,10 @@ public class EVNplayerSneak implements Listener {
                             case COCOA -> item = "cocoa_beans";
                             case MELON_STEM -> item = "melon_seeds";
                             case PUMPKIN_STEM -> item = "pumpkin_seeds";
+                            case NETHER_WART -> item = "nether_wart";
+                            default -> {
+                                continue;
+                            }
                         }
 
                         if(!settings.getBoolean("sneaking.blocks." + item, false)) continue;

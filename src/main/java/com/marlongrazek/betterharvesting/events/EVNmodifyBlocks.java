@@ -78,6 +78,7 @@ public class EVNmodifyBlocks implements Listener {
                 case COCOA -> clicked = "cocoa_beans";
                 case MELON_STEM -> clicked = "melon_seeds";
                 case PUMPKIN_STEM -> clicked = "pumpkin_seeds";
+                case NETHER_WART -> clicked = "nether_wart";
                 default -> {
                     return;
                 }
