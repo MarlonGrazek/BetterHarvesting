@@ -1,6 +1,5 @@
 package com.marlongrazek.betterharvesting.main;
 
-import com.marlongrazek.betterharvesting.commands.CMDsettings;
 import com.marlongrazek.datafile.DataFile;
 import com.marlongrazek.betterharvesting.Recipes;
 import com.marlongrazek.betterharvesting.events.*;
@@ -57,14 +56,11 @@ public class Main extends JavaPlugin {
         //pm.registerEvents(new EVNdispenserUse(), this);
         pm.registerEvents(new EVNbonemealPlants(this), this);
         pm.registerEvents(new EVNplayerSneak(this), this);
-        pm.registerEvents(new EVNwaterCrops(this), this);
         pm.registerEvents(new EVNhoeHarvesting(this), this);
-        pm.registerEvents(new EVNwaterCrops2(this), this);
-        pm.registerEvents(new EVNprojectileHit(), this);
         pm.registerEvents(new EVNshearPlants(this), this);
         pm.registerEvents(new EVNprepareCrafting(this), this);
+        pm.registerEvents(new EVNwaterPlants(), this);
     }
-
     private void checkForUpdates() {
         int spigotID = 98816;
         UpdateChecker.init(this, spigotID)
