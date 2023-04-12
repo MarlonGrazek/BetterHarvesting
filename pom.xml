@@ -37,7 +37,7 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <outputFile>D:/Development/Minecraft/Server/s1181/plugins/BetterHarvesting.jar</outputFile>
+                            <outputFile>D:/Development/Minecraft/Server/s1192/plugins/BetterHarvesting.jar</outputFile>
                         </configuration>
                     </execution>
                 </executions>

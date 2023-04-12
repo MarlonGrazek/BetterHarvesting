@@ -54,17 +54,15 @@ public class Main extends JavaPlugin {
 
     private void registerEvents() {
         PluginManager pm = Bukkit.getPluginManager();
+        //pm.registerEvents(new EVNdispenserUse(), this);
         pm.registerEvents(new EVNsetupPlayer(this), this);
         pm.registerEvents(new EVNmodifyBlocks(this), this);
-        //pm.registerEvents(new EVNdispenserUse(), this);
         pm.registerEvents(new EVNbonemealPlants(this), this);
         pm.registerEvents(new EVNplayerSneak(this), this);
-        pm.registerEvents(new EVNwaterCrops(this), this);
         pm.registerEvents(new EVNhoeHarvesting(this), this);
-        pm.registerEvents(new EVNwaterCrops2(this), this);
-        pm.registerEvents(new EVNprojectileHit(), this);
         pm.registerEvents(new EVNshearPlants(this), this);
         pm.registerEvents(new EVNprepareCrafting(this), this);
+        pm.registerEvents(new EVNwaterPlants(), this);
     }
 
     private void checkForUpdates() {
@@ -94,7 +92,7 @@ public class Main extends JavaPlugin {
                 Material.CORNFLOWER, Material.OXEYE_DAISY, Material.BLUE_ORCHID);
 
         List<Material> crops = List.of(Material.WHEAT_SEEDS, Material.BEETROOT_SEEDS, Material.POTATO, Material.CARROT,
-                Material.COCOA_BEANS, Material.PUMPKIN_SEEDS, Material.MELON_SEEDS);
+                Material.COCOA_BEANS, Material.PUMPKIN_SEEDS, Material.MELON_SEEDS, Material.NETHER_WART);
 
         List<Material> leaves = List.of(Material.ACACIA_LEAVES, Material.AZALEA_LEAVES, Material.BIRCH_LEAVES, Material.DARK_OAK_LEAVES,
                 Material.FLOWERING_AZALEA_LEAVES, Material.JUNGLE_LEAVES, Material.OAK_LEAVES, Material.SPRUCE_LEAVES);
@@ -118,6 +116,7 @@ public class Main extends JavaPlugin {
             settings.set("right_clicking.blocks.jack_o_lantern", true);
 
         if (!settings.contains("watering")) setupPaths.add("watering");
+        if (!settings.contains("poisoning")) setupPaths.add("poisoning");
 
         if (!settings.contains("crop_harvesting")) setupPaths.add("crop_harvesting");
         crops.forEach(crop -> {
@@ -185,7 +184,22 @@ public class Main extends JavaPlugin {
             settings.set("experimental.enabled", false);
             settings.set("experimental.permissions", new ArrayList<>());
         }
-        if (!settings.contains("experimental.settings.mega_trees")) settings.set("experimental.settings.mega_trees", false);
+        if (!settings.contains("experimental.settings.mega_trees"))
+            settings.set("experimental.settings.mega_trees", false);
+
+        // CUSTOM DROPS
+        List<Material> custom_drops_list = List.of(Material.WHEAT, Material.POTATOES, Material.CARROTS,
+                Material.BEETROOTS, Material.NETHER_WART);
+        for (Material material : custom_drops_list) {
+            if (settings.contains("custom_drops." + material.name().toLowerCase())) continue;
+            settings.set("custom_drops." + material.name().toLowerCase() + ".default", true);
+            settings.set("custom_drops." + material.name().toLowerCase() + ".creative", false);
+            settings.set("custom_drops." + material.name().toLowerCase() + ".fortune", true);
+            settings.set("custom_drops." + material.name().toLowerCase() + ".xp.chance", 0.33);
+            settings.set("custom_drops." + material.name().toLowerCase() + ".xp.amount", 3);
+            settings.set("custom_drops." + material.name().toLowerCase() + ".drops", new ArrayList<>());
+            settings.set("custom_drops." + material.name().toLowerCase() + ".bonemeal_strength", 1.0);
+        }
 
         setupPaths.forEach(path -> {
             settings.set(path + ".enabled", true);

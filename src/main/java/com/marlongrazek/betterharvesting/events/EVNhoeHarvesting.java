@@ -2,22 +2,23 @@ package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
 import com.marlongrazek.datafile.DataFile;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.block.data.type.Leaves;
+import org.bukkit.*;
+import org.bukkit.block.data.Ageable;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.ExperienceOrb;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class EVNhoeHarvesting implements Listener {
 
@@ -66,17 +67,68 @@ public class EVNhoeHarvesting implements Listener {
     @EventHandler
     public void onBreak(BlockBreakEvent e) {
 
-        if(e.getPlayer().getGameMode() == GameMode.CREATIVE) return;
+        if(!(e.getBlock().getBlockData() instanceof Ageable)) return;
+
+        DataFile settings = plugin.getDataFile("settings");
+
+        String config_path = "custom_drops." + e.getBlock().getType().name().toLowerCase();
+
+        boolean drops_in_creative = settings.getBoolean(config_path + ".creative", false);
+        boolean default_drops = settings.getBoolean(config_path + ".default", true);
+        boolean allow_fortune = settings.getBoolean(config_path + ".fortune", true);
+        double xp_chance = settings.getDouble(config_path + ".xp.chance", 0.1);
+        int xp_amount = settings.getInt(config_path + ".xp.amount", 3);
+        //boolean break_harvest = false; TODO
 
         ItemStack tool = e.getPlayer().getInventory().getItemInMainHand();
+        int fortune_level = 0;
+        if (tool != null && allow_fortune) fortune_level = tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS);
+
+        if (!default_drops) e.setDropItems(false);
+
+        if (!drops_in_creative && e.getPlayer().getGameMode() == GameMode.CREATIVE) e.setDropItems(false);
+
+        if (drops_in_creative && default_drops) if (e.getPlayer().getGameMode() == GameMode.CREATIVE) {
+            for (ItemStack drop : e.getBlock().getDrops()) {
+                drop.setAmount(drop.getAmount() * getDropMultiplier(fortune_level));
+                dropItem(e.getBlock().getLocation(), drop);
+            }
+        }
+
+        Ageable ageable = (Ageable) e.getBlock().getBlockData();
+        if(ageable.getAge() != ageable.getMaximumAge()) return;
+
+        if(!drops_in_creative && e.getPlayer().getGameMode() == GameMode.CREATIVE) return;
+
+        // CUSTOM DROPS
+        for (ItemStack custom_drop : (List<ItemStack>) settings.get(config_path + ".drops")) {
+            custom_drop.setAmount(custom_drop.getAmount() * getDropMultiplier(fortune_level));
+            dropItem(e.getBlock().getLocation(), custom_drop);
+        }
+
+        // XP
+        if(ThreadLocalRandom.current().nextDouble() < xp_chance)
+            e.getBlock().getWorld().spawn(e.getBlock().getLocation(), ExperienceOrb.class).setExperience(xp_amount * getDropMultiplier(fortune_level));
+
+        /*List<Material> crops = List.of(Material.BEETROOTS, Material.WHEAT, Material.CARROTS, Material.POTATOES,
+                Material.PUMPKIN_STEM, Material.MELON_STEM, Material.ATTACHED_MELON_STEM, Material.ATTACHED_PUMPKIN_STEM);
+
+        if(!(e.getBlock().getBlockData() instanceof Ageable)) return;
+
+        List<ItemStack> drops = new ArrayList<>();
+
+        for (ItemStack drop : drops) {
+            drop.setAmount(drop.getAmount() * getDropMultiplier(fortune_level));
+            dropItem(e.getBlock().getLocation(), drop);
+        }*/
+
+        /*ItemStack tool = e.getPlayer().getInventory().getItemInMainHand();
 
         ArrayList<Material> hoes = new ArrayList<>(Arrays.asList(Material.WOODEN_HOE, Material.STONE_HOE,
                 Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE));
 
         ArrayList<Material> plants = new ArrayList<>(Arrays.asList(Material.GRASS, Material.TALL_GRASS,
                 Material.FERN, Material.LARGE_FERN));
-
-        DataFile settings = plugin.getDataFile("settings");
 
         boolean enabled = settings.getBoolean("better_drops.enabled", true);
         boolean no_item_enabled = settings.getBoolean("better_drops.tools.no_tool", true);
@@ -146,7 +198,7 @@ public class EVNhoeHarvesting implements Listener {
             }
             if ((randomInt > 20 && randomInt <= 22) || (randomInt > 40 && randomInt <= 42) || (randomInt > 80 && randomInt <= 82))
                 location.getWorld().spawn(location, ExperienceOrb.class).setExperience(multiplier);
-        }
+        }*/
     }
 
     public void dropItem(Location location, ItemStack item) {

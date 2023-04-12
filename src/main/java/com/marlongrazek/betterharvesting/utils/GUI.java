@@ -1,12 +1,15 @@
 package com.marlongrazek.betterharvesting.utils;
 
 import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.builder.StringBuilder;
 import com.marlongrazek.datafile.DataFile;
 import com.marlongrazek.ui.History;
 import net.wesjd.anvilgui.AnvilGUI;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.math3.util.Precision;
+import org.bukkit.Color;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import com.marlongrazek.ui.UI;
 import org.bukkit.event.inventory.ClickType;
@@ -224,9 +227,11 @@ public class GUI {
         return page;
     }
 
-    public UI.Page settings() {
+    public UI.Page settings(World world) {
 
-        UI.Page page = new UI.Page("Settings", 54, plugin);
+        String title = "Settings";
+        if(world != null) title = "World Settings";
+        UI.Page page = new UI.Page(title, 54, plugin);
 
         History history = plugin.getHistory(player);
         history.addPage(page);
@@ -389,12 +394,40 @@ public class GUI {
             watering.addItemFlag(ItemFlag.HIDE_POTION_EFFECTS);
             watering.addLoreLines("§7Current: " + watering_data[0] + watering_data[1], line);
             watering.addLoreLine("§7Click to " + watering_data[2]);
-            if (watering_enabled) watering.addLoreLine("§7Right-click to customize (coming soon)");
+            if (watering_enabled) watering.addLoreLine("§7Right-click to customize");
             watering.onClick(clickType -> {
-                settings.set(watering_path, !watering_enabled);
-                reload();
+                if (clickType == ClickType.RIGHT && watering_enabled) open(settings_watering());
+                else {
+                    settings.set(watering_path, !watering_enabled);
+                    reload();
+                }
             });
             content.addItem(watering);
+
+            // poisoning
+            String poisoning_path = "poisoning.enabled";
+            boolean poisoning_enabled = settings.getBoolean(poisoning_path, true);
+            String[] poisoning_data = getData(poisoning_enabled);
+
+            ItemStack poison = new ItemStack(Material.SPLASH_POTION);
+            PotionMeta poison_meta = (PotionMeta) poison.getItemMeta();
+            poison_meta.setColor(Color.fromRGB(80, 150, 60));
+            poison.setItemMeta(poison_meta);
+
+            UI.Item poisoning = UI.Item.fromItemStack(poison);
+            poisoning.setName(poisoning_data[0] + "Poisoning");
+            poisoning.addItemFlag(ItemFlag.HIDE_POTION_EFFECTS);
+            poisoning.addLoreLines("§7Current: " + poisoning_data[0] + poisoning_data[1], line);
+            poisoning.addLoreLine("§7Click to " + poisoning_data[2]);
+            if (poisoning_enabled) poisoning.addLoreLine("§7Right-click to customize");
+            poisoning.onClick(clickType -> {
+                if (clickType == ClickType.RIGHT && poisoning_enabled) open(settings_poisoning());
+                else {
+                    settings.set(poisoning_path, !poisoning_enabled);
+                    reload();
+                }
+            });
+            content.addItem(poisoning);
 
             // experimental
             String experimental_path = "experimental.enabled";
@@ -418,6 +451,20 @@ public class GUI {
             UI.Section footer = new UI.Section(9, 1);
             footer.fill(backgroundItem);
             footer.setItem(getNavigationItem(), 4);
+
+            // world settings
+            if(world == null) {
+                UI.Item worldSettings = UI.Item.Skull.fromBase64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODc5ZTU0Y2JlODc4NjdkMTRiMmZiZGYzZjE4NzA4OTQzNTIwNDhkZmVjZDk2Mjg0NmRlYTg5M2IyMTU0Yzg1In19fQ==");
+                worldSettings.setName("§eWorld Settings");
+                worldSettings.addLoreLines("§7Change settings specific for this world", line);
+                worldSettings.addLoreLines("§7Click to customize", "§7Right-click to reset");
+                worldSettings.onClick(clickType -> {
+                    if(clickType == ClickType.RIGHT) {
+
+                    } else open(settings(p.getWorld()));
+                });
+                footer.setItem(worldSettings, 8);
+            }
 
             page.setSection(header, 0);
             page.setSection(sidebar, 9);
@@ -494,7 +541,7 @@ public class GUI {
 
     public UI.Page settings_cropharvesting_crops() {
 
-        UI.Page page = new UI.Page("Crop Harvesting - Crops", 36, plugin);
+        UI.Page page = new UI.Page("Crop Harvesting - Crops", 45, plugin);
 
         History history = plugin.getHistory(player);
         history.addPage(page);
@@ -504,10 +551,10 @@ public class GUI {
             page.clear();
 
             DataFile settings = plugin.getDataFile("settings");
-            List<String> crops = List.of("Wheat Seeds", "Beetroot Seeds", "Potato", "Carrot", "Cocoa Beans", "Pumpkin Seeds", "Melon Seeds");
+            List<String> crops = List.of("Wheat Seeds", "Beetroot Seeds", "Potato", "Carrot", "Cocoa Beans", "Pumpkin Seeds", "Melon Seeds", "Nether Wart");
 
             // content
-            UI.Section content = new UI.Section(7, 1);
+            UI.Section content = new UI.Section(7, 2);
 
             crops.forEach(name -> {
 
@@ -555,7 +602,7 @@ public class GUI {
             footer.setItem(all_off, 7);
 
             page.setSection(content, 10);
-            page.setSection(footer, 27);
+            page.setSection(footer, 36);
         });
 
         return page;
@@ -893,8 +940,8 @@ public class GUI {
             page.clear();
 
             DataFile settings = plugin.getDataFile("settings");
-            List<String> blocks = List.of("Wheat Seeds", "Beetroot Seeds", "Potato", "Carrot", "Cocoa Beans",
-                    "Pumpkin Seeds", "Melon Seeds", "Acacia Sapling", "Azalea", "Birch Sapling", "Dark Oak Sapling",
+            List<String> blocks = List.of("Wheat Seeds", "Beetroot Seeds", "Potato", "Carrot", "Cocoa Beans", "Pumpkin Seeds",
+                    "Melon Seeds", "Nether Wart", "Acacia Sapling", "Azalea", "Birch Sapling", "Dark Oak Sapling",
                     "Flowering Azalea", "Jungle Sapling", "Oak Sapling", "Spruce Sapling");
 
             // content
@@ -1513,6 +1560,142 @@ public class GUI {
 
         return page;
 
+    }
+
+    public UI.Page settings_watering() {
+
+        UI.Page page = new UI.Page("Watering", 36, plugin);
+
+        History history = plugin.getHistory(player);
+        history.addPage(page);
+
+        page.onOpen(p -> {
+
+            page.clear();
+
+            // content
+            UI.Section content = new UI.Section(5 ,1);
+
+            // blocks
+            UI.Item blocks = new UI.Item("§eBlocks", Material.GRASS_BLOCK);
+            blocks.addLoreLines("§7Choose the blocks that can be watered", line);
+            blocks.addLoreLines("§7Click to view the blocks settings");
+            blocks.onClick(clickType -> open(settings_watering_blocks()));
+            content.setItem(blocks, 0);
+
+            // range
+            UI.Item range = new UI.Item("§eRange", Material.MAP);
+            range.addLoreLines("§7In a range of 2 blocks of the impact", "§7location blocks can be watered", line);
+            range.addLoreLine("§7Click to change");
+            content.setItem(range, 2);
+
+            // permissions
+            UI.Item permissions = new UI.Item("§ePermissions", Material.FILLED_MAP);
+            permissions.addLoreLines("§7Set permissions to allow only", "§7certain players to water blocks", line);
+            permissions.addLoreLine("§7Click to view the permissions");
+            permissions.onClick(clickType -> open(settings_permissions("watering")));
+            content.setItem(permissions, 4);
+
+            // footer
+            UI.Section footer = new UI.Section(9, 1);
+            footer.fill(backgroundItem);
+            footer.setItem(getNavigationItem(), 4);
+
+            page.setSection(content, 11);
+            page.setSection(footer, 27);
+        });
+
+        return page;
+    }
+
+    public UI.Page settings_watering_blocks() {
+
+        UI.Page page = new UI.Page("Watering - Blocks", 36, plugin);
+
+        History history = plugin.getHistory(player);
+        history.addPage(page);
+
+        page.onOpen(p -> {
+
+            page.clear();
+
+            // footer
+            UI.Section footer = new UI.Section(9, 1);
+            footer.fill(backgroundItem);
+            footer.setItem(getNavigationItem(), 4);
+
+            page.setSection(footer, 27);
+        });
+
+        return page;
+    }
+
+    public UI.Page settings_poisoning() {
+
+        UI.Page page = new UI.Page("Poisoning", 36, plugin);
+
+        History history = plugin.getHistory(player);
+        history.addPage(page);
+
+        page.onOpen(p -> {
+
+            page.clear();
+
+            // content
+            UI.Section content = new UI.Section(5 ,1);
+
+            // blocks
+            UI.Item blocks = new UI.Item("§eBlocks", Material.GRASS_BLOCK);
+            blocks.addLoreLines("§7Choose the blocks that can be poisoned", line);
+            blocks.addLoreLines("§7Click to view the blocks settings");
+            blocks.onClick(clickType -> open(settings_poisoning_blocks()));
+            content.setItem(blocks, 0);
+
+            // range
+            UI.Item range = new UI.Item("§eRange", Material.MAP);
+            range.addLoreLines("§7In a range of 2 blocks of the impact", "§7location blocks can be poisoned", line);
+            range.addLoreLine("§7Click to change");
+            content.setItem(range, 2);
+
+            // permissions
+            UI.Item permissions = new UI.Item("§ePermissions", Material.FILLED_MAP);
+            permissions.addLoreLines("§7Set permissions to allow only", "§7certain players to poison blocks", line);
+            permissions.addLoreLine("§7Click to view the permissions");
+            permissions.onClick(clickType -> open(settings_permissions("poisoning")));
+            content.setItem(permissions, 4);
+
+            // footer
+            UI.Section footer = new UI.Section(9, 1);
+            footer.fill(backgroundItem);
+            footer.setItem(getNavigationItem(), 4);
+
+            page.setSection(content, 11);
+            page.setSection(footer, 27);
+        });
+
+        return page;
+    }
+
+    public UI.Page settings_poisoning_blocks() {
+
+        UI.Page page = new UI.Page("Poisoning - Blocks", 36, plugin);
+
+        History history = plugin.getHistory(player);
+        history.addPage(page);
+
+        page.onOpen(p -> {
+
+            page.clear();
+
+            // footer
+            UI.Section footer = new UI.Section(9, 1);
+            footer.fill(backgroundItem);
+            footer.setItem(getNavigationItem(), 4);
+
+            page.setSection(footer, 27);
+        });
+
+        return page;
     }
 
     public UI.Page settings_permissions(String setting) {

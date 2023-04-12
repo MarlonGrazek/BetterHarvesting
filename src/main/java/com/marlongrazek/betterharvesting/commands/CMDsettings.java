@@ -27,7 +27,7 @@ public class CMDsettings extends PluginCommand {
             history.addPage(null);
 
             GUI gui = new GUI(player, plugin);
-            gui.open(gui.settings());
+            gui.open(gui.settings(null));
         }
     }
 
