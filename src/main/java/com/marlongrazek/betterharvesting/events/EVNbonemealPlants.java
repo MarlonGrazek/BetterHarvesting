@@ -17,6 +17,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class EVNbonemealPlants implements Listener {
 
@@ -89,8 +90,28 @@ public class EVNbonemealPlants implements Listener {
         Block block = e.getClickedBlock();
         int strength = getStrength();
 
+        // wheat, potatoes, carrots
+        if(List.of(Material.WHEAT, Material.POTATOES, Material.CARROTS).contains(block.getType())) {
+
+            Ageable ageable = (Ageable) block.getBlockData();
+
+            if(ageable.getAge() == ageable.getMaximumAge()) return;
+
+            e.setCancelled(true);
+
+            double bonemeal_strength = settings.getDouble("custom_drops." + block.getType().name().toLowerCase() + ".bonemeal_strength");
+            int stages = (int) Math.round(ThreadLocalRandom.current().nextInt(2, 6) * bonemeal_strength);
+
+            ageable.setAge(Math.min(ageable.getMaximumAge(), ageable.getAge() + stages));
+            block.setBlockData(ageable);
+
+            spawnParticle(player, block.getLocation());
+            player.playSound(player.getLocation(), Sound.ITEM_BONE_MEAL_USE, 1, 1);
+            if (player.getGameMode() != GameMode.CREATIVE) e.getItem().setAmount(e.getItem().getAmount() - 1);
+        }
+
         // sugar cane, cactus
-        if (block.getType() == Material.SUGAR_CANE || block.getType() == Material.CACTUS) {
+        else if (block.getType() == Material.SUGAR_CANE || block.getType() == Material.CACTUS) {
 
             e.setCancelled(true);
 
