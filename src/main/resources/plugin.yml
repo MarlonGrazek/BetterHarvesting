@@ -9,3 +9,4 @@ commands:
           description: opens the settings
           aliases:
             - bhs
+     betterharvesting:
