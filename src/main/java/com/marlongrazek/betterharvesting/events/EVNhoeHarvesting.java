@@ -1,7 +1,7 @@
 package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
-import com.marlongrazek.datafile.DataFile;
+import com.marlongrazek.customfileconfiguration.CFC;
 import org.bukkit.*;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.enchantments.Enchantment;
@@ -69,7 +69,7 @@ public class EVNhoeHarvesting implements Listener {
 
         if(!(e.getBlock().getBlockData() instanceof Ageable)) return;
 
-        DataFile settings = plugin.getDataFile("settings");
+        CFC settings = plugin.getCFCSettings();
 
         String config_path = "custom_drops." + e.getBlock().getType().name().toLowerCase();
 

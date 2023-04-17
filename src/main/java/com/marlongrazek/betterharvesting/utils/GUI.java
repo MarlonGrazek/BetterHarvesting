@@ -1,15 +1,14 @@
 package com.marlongrazek.betterharvesting.utils;
 
 import com.marlongrazek.betterharvesting.main.Main;
-import com.marlongrazek.builder.StringBuilder;
-import com.marlongrazek.datafile.DataFile;
+import com.marlongrazek.customfileconfiguration.CFC;
 import com.marlongrazek.ui.History;
 import net.wesjd.anvilgui.AnvilGUI;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.WordUtils;
 import org.apache.commons.math3.util.Precision;
-import org.bukkit.Color;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import com.marlongrazek.ui.UI;
 import org.bukkit.event.inventory.ClickType;
@@ -19,6 +18,8 @@ import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionType;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class GUI {
@@ -28,10 +29,17 @@ public class GUI {
 
     private final UI.Item backgroundItem = new UI.Item(" ", Material.GRAY_STAINED_GLASS_PANE);
     private final String line = "§7-----";
+    private final float volume;
+
+    FileConfiguration languageFile;
 
     public GUI(Player player, Main plugin) {
         this.player = player;
         this.plugin = plugin;
+        this.volume = Float.parseFloat(plugin.getCFCSettings().getString("gui_volume"));
+
+        String lang = plugin.getCFCConfig().getString("language");
+        languageFile = plugin.getLanguageFile(lang);
     }
 
     public void open(UI.Page page) {
@@ -229,8 +237,8 @@ public class GUI {
 
     public UI.Page settings(World world) {
 
-        String title = "Settings";
-        if(world != null) title = "World Settings";
+        String title = languageFile.getString("gui.settings.start.title");
+        if (world != null) title = "World Settings";
         UI.Page page = new UI.Page(title, 54, plugin);
 
         History history = plugin.getHistory(player);
@@ -239,7 +247,7 @@ public class GUI {
         page.onOpen(p -> {
 
             page.clear();
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
 
             // header
             UI.Section header = new UI.Section(9, 1);
@@ -253,136 +261,195 @@ public class GUI {
             UI.Section content = new UI.Section(5, 2);
 
             // crop harvesting
-            String crop_harvesting_path = "crop_harvesting.enabled";
-            boolean crop_harvesting_enabled = settings.getBoolean(crop_harvesting_path, true);
-            String[] crop_harvesting_data = getData(crop_harvesting_enabled);
+            boolean crop_harvesting_enabled = settings.getBoolean("crop_harvesting.enabled", true);
 
-            UI.Item crop_harvesting = new UI.Item(crop_harvesting_data[0] + "Crop Harvesting", Material.WHEAT_SEEDS);
-            crop_harvesting.addLoreLines("§7Current: " + crop_harvesting_data[0] + crop_harvesting_data[1], line);
-            crop_harvesting.addLoreLine("§7Click to " + crop_harvesting_data[2]);
-            if (crop_harvesting_enabled) crop_harvesting.addLoreLine("§7Right-click to customize");
+            UI.Item crop_harvesting = new UI.Item("§e" + languageFile.getString("gui.settings.harvest.title"), Material.WHEAT_SEEDS);
+
+            if (crop_harvesting_enabled) {
+                crop_harvesting.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                crop_harvesting.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                crop_harvesting.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                crop_harvesting.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            crop_harvesting.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             crop_harvesting.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && crop_harvesting_enabled) open(settings_cropharvesting());
-                else {
-                    settings.set(crop_harvesting_path, !crop_harvesting_enabled);
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_cropharvesting());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                } else {
+                    settings.set("crop_harvesting.enabled", !crop_harvesting_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(crop_harvesting);
 
             // better drops
-            String better_drops_path = "better_drops.enabled";
-            boolean better_drops_enabled = settings.getBoolean(better_drops_path, true);
-            String[] better_drops_data = getData(better_drops_enabled);
+            boolean better_drops_enabled = settings.getBoolean("better_drops.enabled", true);
 
-            UI.Item better_drops = new UI.Item(better_drops_data[0] + "Better Drops", Material.IRON_HOE);
-            better_drops.addItemFlag(ItemFlag.HIDE_ATTRIBUTES);
-            better_drops.addLoreLines("§7Current: " + better_drops_data[0] + better_drops_data[1], line);
-            better_drops.addLoreLine("§7Click to " + better_drops_data[2]);
-            if (better_drops_enabled) better_drops.addLoreLine("§7Right-click to customize");
+            UI.Item better_drops = new UI.Item("§eBetter Drops", Material.IRON_HOE);
+            better_drops.addItemFlags(Arrays.asList(ItemFlag.values()));
+
+            if(better_drops_enabled) {
+                better_drops.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                better_drops.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                better_drops.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                better_drops.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            better_drops.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             better_drops.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && better_drops_enabled) open(settings_betterdrops());
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_betterdrops());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                }
                 else {
-                    settings.set(better_drops_path, !better_drops_enabled);
+                    settings.set("better_drops.enabled", !better_drops_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(better_drops);
 
             // sneaking
-            String sneaking_path = "sneaking.enabled";
-            boolean sneaking_enabled = settings.getBoolean(sneaking_path, true);
-            String[] sneaking_data = getData(sneaking_enabled);
+            boolean sneaking_enabled = settings.getBoolean("sneaking.enabled", true);
 
-            UI.Item sneaking = new UI.Item(sneaking_data[0] + "Sneaking", Material.FILLED_MAP);
-            sneaking.addLoreLines("§7Current: " + sneaking_data[0] + sneaking_data[1], line);
-            sneaking.addLoreLine("§7Click to " + sneaking_data[2]);
-            if (sneaking_enabled) sneaking.addLoreLine("§7Right-click to customize");
+            UI.Item sneaking = new UI.Item("§eSneaking", Material.FARMLAND);
+
+            if(sneaking_enabled) {
+                sneaking.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                sneaking.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                sneaking.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                sneaking.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            sneaking.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             sneaking.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && sneaking_enabled) open(settings_sneaking());
-                else {
-                    settings.set(sneaking_path, !sneaking_enabled);
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_sneaking());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                } else {
+                    settings.set("sneaking.enabled", !sneaking_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(sneaking);
 
-            // shearing
-            String shearing_path = "shearing.enabled";
-            boolean shearing_enabled = settings.getBoolean(shearing_path, true);
-            String[] shearing_data = getData(shearing_enabled);
+            // shears
+            boolean shearing_enabled = settings.getBoolean("shears.enabled", true);
 
-            UI.Item shearing = new UI.Item(shearing_data[0] + "Shearing", Material.SHEARS);
-            shearing.addLoreLines("§7Current: " + shearing_data[0] + shearing_data[1], line);
-            shearing.addLoreLine("§7Click to " + shearing_data[2]);
-            if (shearing_enabled) shearing.addLoreLine("§7Right-click to customize");
+            UI.Item shearing = new UI.Item("§e" + languageFile.getString("gui.settings.shears.title"), Material.SHEARS);
+
+            if(shearing_enabled) {
+                shearing.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                shearing.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                shearing.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                shearing.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            shearing.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             shearing.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && shearing_enabled) open(settings_shearing());
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_shears());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                }
                 else {
-                    settings.set(shearing_path, !shearing_enabled);
+                    settings.set("shears.enabled", !shearing_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(shearing);
 
             // crafting
-            String crafting_path = "crafting.enabled";
-            boolean crafting_enabled = settings.getBoolean(crafting_path, true);
-            String[] crafting_data = getData(crafting_enabled);
+            boolean crafting_enabled = settings.getBoolean("crafting.enabled", true);
 
-            UI.Item crafting = new UI.Item(crafting_data[0] + "Crafting Recipes", Material.CRAFTING_TABLE);
-            crafting.addLoreLines("§7Current: " + crafting_data[0] + crafting_data[1], line);
-            crafting.addLoreLine("§7Click to " + crafting_data[2]);
-            if (crafting_enabled) crafting.addLoreLine("§7Right-click to customize");
+            UI.Item crafting = new UI.Item("§e" + languageFile.getString("gui.settings.craft.title"), Material.CRAFTING_TABLE);
+
+            if(crafting_enabled) {
+                crafting.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                crafting.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                crafting.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                crafting.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            crafting.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             crafting.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && crafting_enabled) open(settings_crafting());
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_crafting());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                }
                 else {
-                    settings.set(crafting_path, !crafting_enabled);
+                    settings.set("crafting.enabled", !crafting_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(crafting);
 
             // bone meal
-            String bonemeal_path = "bonemeal.enabled";
-            boolean bonemeal_enabled = settings.getBoolean(bonemeal_path, true);
-            String[] bonemeal_data = getData(bonemeal_enabled);
+            boolean bonemeal_enabled = settings.getBoolean("bonemeal.enabled", true);
 
-            UI.Item bonemeal = new UI.Item(bonemeal_data[0] + "Bone Mealing", Material.BONE_MEAL);
-            bonemeal.addLoreLines("§7Current: " + bonemeal_data[0] + bonemeal_data[1], line);
-            bonemeal.addLoreLine("§7Click to " + bonemeal_data[2]);
-            if (bonemeal_enabled) bonemeal.addLoreLine("§7Right-click to customize");
+            UI.Item bonemeal = new UI.Item("§e" + languageFile.getString("gui.settings.bonemeal.title"), Material.BONE_MEAL);
+
+            if(bonemeal_enabled) {
+                bonemeal.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                bonemeal.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                bonemeal.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                bonemeal.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            bonemeal.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             bonemeal.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && bonemeal_enabled) open(settings_bonemealing());
-                else {
-                    settings.set(bonemeal_path, !bonemeal_enabled);
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_bone_meal());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                } else {
+                    settings.set("bonemeal.enabled", !bonemeal_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(bonemeal);
 
             // right click
-            String right_click_path = "right_clicking.enabled";
-            boolean right_click_enabled = settings.getBoolean(right_click_path, true);
-            String[] right_click_data = getData(right_click_enabled);
+            boolean right_click_enabled = settings.getBoolean("right_clicking.enabled", true);
 
-            UI.Item right_click = new UI.Item(right_click_data[0] + "Right Click", Material.FILLED_MAP);
-            right_click.addLoreLines("§7Current: " + right_click_data[0] + right_click_data[1], line);
-            right_click.addLoreLine("§7Click to " + right_click_data[2]);
-            if (right_click_enabled) right_click.addLoreLine("§7Right-click to customize");
+            UI.Item right_click = new UI.Item("§eRight Click", Material.FILLED_MAP);
+            right_click.addItemFlags(Arrays.asList(ItemFlag.values()));
+
+            if(right_click_enabled) {
+                right_click.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                right_click.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                right_click.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                right_click.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            right_click.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             right_click.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && right_click_enabled) open(settings_right_clicking());
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_right_clicking());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                }
                 else {
-                    settings.set(right_click_path, !right_click_enabled);
+                    settings.set("right_clicking.enabled", !right_click_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(right_click);
 
             // watering
-            String watering_path = "watering.enabled";
-            boolean watering_enabled = settings.getBoolean(watering_path, true);
-            String[] watering_data = getData(watering_enabled);
+            boolean watering_enabled = settings.getBoolean("watering.enabled", true);
 
             ItemStack bottle = new ItemStack(Material.SPLASH_POTION);
             PotionMeta meta = (PotionMeta) bottle.getItemMeta();
@@ -390,24 +457,33 @@ public class GUI {
             bottle.setItemMeta(meta);
 
             UI.Item watering = UI.Item.fromItemStack(bottle);
-            watering.setName(watering_data[0] + "Watering");
+            watering.setName("§e" + languageFile.getString("gui.settings.water.title"));
             watering.addItemFlag(ItemFlag.HIDE_POTION_EFFECTS);
-            watering.addLoreLines("§7Current: " + watering_data[0] + watering_data[1], line);
-            watering.addLoreLine("§7Click to " + watering_data[2]);
-            if (watering_enabled) watering.addLoreLine("§7Right-click to customize");
+
+            if(watering_enabled) {
+                watering.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                watering.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                watering.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                watering.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            watering.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             watering.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && watering_enabled) open(settings_watering());
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_watering());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                }
                 else {
-                    settings.set(watering_path, !watering_enabled);
+                    settings.set("watering.enabled", !watering_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(watering);
 
             // poisoning
-            String poisoning_path = "poisoning.enabled";
-            boolean poisoning_enabled = settings.getBoolean(poisoning_path, true);
-            String[] poisoning_data = getData(poisoning_enabled);
+            boolean poisoning_enabled = settings.getBoolean("poisoning.enabled", true);
 
             ItemStack poison = new ItemStack(Material.SPLASH_POTION);
             PotionMeta poison_meta = (PotionMeta) poison.getItemMeta();
@@ -415,34 +491,54 @@ public class GUI {
             poison.setItemMeta(poison_meta);
 
             UI.Item poisoning = UI.Item.fromItemStack(poison);
-            poisoning.setName(poisoning_data[0] + "Poisoning");
+            poisoning.setName("§e" + languageFile.getString("gui.settings.poison.title"));
             poisoning.addItemFlag(ItemFlag.HIDE_POTION_EFFECTS);
-            poisoning.addLoreLines("§7Current: " + poisoning_data[0] + poisoning_data[1], line);
-            poisoning.addLoreLine("§7Click to " + poisoning_data[2]);
-            if (poisoning_enabled) poisoning.addLoreLine("§7Right-click to customize");
+
+            if(poisoning_enabled) {
+                poisoning.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                poisoning.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                poisoning.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                poisoning.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            poisoning.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             poisoning.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && poisoning_enabled) open(settings_poisoning());
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_poisoning());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                }
                 else {
-                    settings.set(poisoning_path, !poisoning_enabled);
+                    settings.set("poisoning.enabled", !poisoning_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(poisoning);
 
             // experimental
-            String experimental_path = "experimental.enabled";
-            boolean experimental_enabled = settings.getBoolean(experimental_path, true);
-            String[] experimental_data = getData(experimental_enabled);
+            boolean experimental_enabled = settings.getBoolean("experimental.enabled", true);
 
-            UI.Item experimental = new UI.Item(experimental_data[0] + "Experimental", Material.NETHER_STAR);
-            experimental.addLoreLines("§7Current: " + experimental_data[0] + experimental_data[1], line);
-            experimental.addLoreLine("§7Click to " + experimental_data[2]);
-            if (experimental_enabled) experimental.addLoreLine("§7Right-click to customize");
+            UI.Item experimental = new UI.Item("§eExperimental", Material.NETHER_STAR);
+
+            if(experimental_enabled) {
+                experimental.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.enabled"), "§a"), line);
+                experimental.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.disable"));
+            } else {
+                experimental.addLoreLines("§7" + String.format(languageFile.getString("gui.settings.start.item.disabled"), "§c"), line);
+                experimental.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.enable"));
+            }
+            experimental.addLoreLines("§7" + languageFile.getString("gui.settings.start.item.customize"));
+
             experimental.onClick(clickType -> {
-                if (clickType == ClickType.RIGHT && experimental_enabled) open(settings_experimental());
+                if (clickType == ClickType.RIGHT) {
+                    open(settings_experimental());
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                }
                 else {
-                    settings.set(experimental_path, !experimental_enabled);
+                    settings.set("experimental.enabled", !experimental_enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 }
             });
             content.addItem(experimental);
@@ -453,13 +549,13 @@ public class GUI {
             footer.setItem(getNavigationItem(), 4);
 
             // world settings
-            if(world == null) {
+            if (world == null) {
                 UI.Item worldSettings = UI.Item.Skull.fromBase64("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODc5ZTU0Y2JlODc4NjdkMTRiMmZiZGYzZjE4NzA4OTQzNTIwNDhkZmVjZDk2Mjg0NmRlYTg5M2IyMTU0Yzg1In19fQ==");
                 worldSettings.setName("§eWorld Settings");
                 worldSettings.addLoreLines("§7Change settings specific for this world", line);
                 worldSettings.addLoreLines("§7Click to customize", "§7Right-click to reset");
                 worldSettings.onClick(clickType -> {
-                    if(clickType == ClickType.RIGHT) {
+                    if (clickType == ClickType.RIGHT) {
 
                     } else open(settings(p.getWorld()));
                 });
@@ -486,7 +582,7 @@ public class GUI {
         page.onOpen(p -> {
 
             page.clear();
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
 
             UI.Section content = new UI.Section(7, 1);
 
@@ -550,7 +646,7 @@ public class GUI {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
             List<String> crops = List.of("Wheat Seeds", "Beetroot Seeds", "Potato", "Carrot", "Cocoa Beans", "Pumpkin Seeds", "Melon Seeds", "Nether Wart");
 
             // content
@@ -622,7 +718,7 @@ public class GUI {
             // content
             UI.Section content = new UI.Section(3, 1);
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
 
             boolean no_tool_enabled = settings.getBoolean("crop_harvesting.tools.no_tool", true);
             String[] no_tool_data = getData(no_tool_enabled);
@@ -669,7 +765,7 @@ public class GUI {
         page.onOpen(p -> {
 
             page.clear();
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
 
             // content
             UI.Section content = new UI.Section(7, 1);
@@ -730,7 +826,7 @@ public class GUI {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
             List<String> blocks = List.of("Acacia Leaves", "Azalea Leaves", "Birch Leaves", "Dark Oak Leaves", "Flowering Azalea Leaves",
                     "Jungle Leaves", "Oak Leaves", "Spruce Leaves", "Grass", "Tall Grass", "Fern", "Large Fern");
 
@@ -803,7 +899,7 @@ public class GUI {
             // content
             UI.Section content = new UI.Section(3, 1);
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
 
             boolean no_tool_enabled = settings.getBoolean("better_drops.tools.no_tool", true);
             String[] no_tool_data = getData(no_tool_enabled);
@@ -850,7 +946,7 @@ public class GUI {
         page.onOpen(p -> {
 
             page.clear();
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
 
             UI.Section content = new UI.Section(7, 1);
 
@@ -939,7 +1035,7 @@ public class GUI {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
             List<String> blocks = List.of("Wheat Seeds", "Beetroot Seeds", "Potato", "Carrot", "Cocoa Beans", "Pumpkin Seeds",
                     "Melon Seeds", "Nether Wart", "Acacia Sapling", "Azalea", "Birch Sapling", "Dark Oak Sapling",
                     "Flowering Azalea", "Jungle Sapling", "Oak Sapling", "Spruce Sapling");
@@ -999,9 +1095,9 @@ public class GUI {
         return page;
     }
 
-    public UI.Page settings_shearing() {
+    public UI.Page settings_shears() {
 
-        UI.Page page = new UI.Page("Shearing", 36, plugin);
+        UI.Page page = new UI.Page("Shears", 36, plugin);
 
         History history = plugin.getHistory(player);
         history.addPage(page);
@@ -1010,37 +1106,53 @@ public class GUI {
 
             page.clear();
 
-            UI.Section content = new UI.Section(3, 1);
+            UI.Section content = new UI.Section(5, 1);
 
             // blocks
             UI.Item blocks = new UI.Item("§eBlocks", Material.TALL_GRASS);
             blocks.addLoreLines("§7Choose the blocks that can be sheared", line);
             blocks.addLoreLine("§7Click to view the blocks settings");
-            blocks.onClick(clickType -> open(settings_shearing_blocks()));
+            blocks.onClick(clickType -> open(settings_shears_blocks()));
             content.setItem(blocks, 0);
+
+            CFC settings = plugin.getCFCSettings();
+            String fortune_path = "shears.fortune";
+            boolean fortune_enabled = settings.getBoolean(fortune_path, true);
+            String[] data = getData(fortune_enabled);
+
+            // fortune
+            UI.Item fortune = new UI.Item(data[0] + "Fortune", Material.ENCHANTED_BOOK);
+            fortune.addLoreLines("§7State: " + data[0] + data[1], line);
+            fortune.addLoreLines("§7Decide whether the fortune enchantment", "§7will affect the drops or not", line);
+            fortune.addLoreLine("§7Click to " + data[2]);
+            fortune.onClick(clickType -> {
+                settings.set(fortune_path, !fortune_enabled);
+                reload();
+            });
+            content.setItem(fortune, 2);
 
             // permissions
             UI.Item permissions = new UI.Item("§ePermissions", Material.FILLED_MAP);
             permissions.addLoreLines("§7Set permissions to allow only", "§7certain players to shear blocks", line);
             permissions.addLoreLine("§7Click to view the permissions");
-            permissions.onClick(clickType -> open(settings_permissions("shearing")));
-            content.setItem(permissions, 2);
+            permissions.onClick(clickType -> open(settings_permissions("shears")));
+            content.setItem(permissions, 4);
 
             // footer
             UI.Section footer = new UI.Section(9, 1);
             footer.fill(backgroundItem);
             footer.setItem(getNavigationItem(), 4);
 
-            page.setSection(content, 12);
+            page.setSection(content, 11);
             page.setSection(footer, 27);
         });
 
         return page;
     }
 
-    public UI.Page settings_shearing_blocks() {
+    public UI.Page settings_shears_blocks() {
 
-        UI.Page page = new UI.Page("Shearing - Blocks", 45, plugin);
+        UI.Page page = new UI.Page("Shears - Blocks", 45, plugin);
 
         History history = plugin.getHistory(player);
         history.addPage(page);
@@ -1049,7 +1161,7 @@ public class GUI {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
             List<String> blocks = List.of("Acacia Sapling", "Azalea", "Birch Sapling", "Dark Oak Sapling",
                     "Flowering Azalea", "Jungle Sapling", "Oak Sapling", "Spruce Sapling", "Tall Grass", "Seagrass",
                     "Large Fern");
@@ -1060,7 +1172,7 @@ public class GUI {
             blocks.forEach(name -> {
 
                 Material material = Material.valueOf(name.toUpperCase().replaceAll(" ", "_"));
-                boolean enabled = settings.getBoolean("shearing.blocks." + material.name().toLowerCase(), true);
+                boolean enabled = settings.getBoolean("shears.blocks." + material.name().toLowerCase(), true);
                 String[] data = getData(enabled);
 
                 if (name.equals("Seagrass")) name = "Tall Seagrass";
@@ -1068,7 +1180,7 @@ public class GUI {
                 item.addLoreLines("§7State: " + data[0] + data[1], line);
                 item.addLoreLine("§7Click to " + data[2]);
                 item.onClick(clickType -> {
-                    settings.set("shearing.blocks." + material.name().toLowerCase(), !enabled);
+                    settings.set("shears.blocks." + material.name().toLowerCase(), !enabled);
                     reload();
                 });
                 content.addItem(item);
@@ -1084,7 +1196,7 @@ public class GUI {
             all_on.addLoreLine("§7Click to turn all blocks on");
             all_on.onClick(clickType -> {
                 blocks.forEach(block -> {
-                    String path = "shearing.blocks." + block.toLowerCase().replaceAll(" ", "_");
+                    String path = "shears.blocks." + block.toLowerCase().replaceAll(" ", "_");
                     settings.set(path, true);
                 });
                 reload();
@@ -1096,7 +1208,7 @@ public class GUI {
             all_off.addLoreLine("§7Click to turn all blocks off");
             all_off.onClick(clickType -> {
                 blocks.forEach(block -> {
-                    String path = "shearing.blocks." + block.toLowerCase().replaceAll(" ", "_");
+                    String path = "shears.blocks." + block.toLowerCase().replaceAll(" ", "_");
                     settings.set(path, false);
                 });
                 reload();
@@ -1161,7 +1273,7 @@ public class GUI {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
             List<String> recipes = List.of("Acacia Sapling", "Azalea", "Birch Sapling", "Dark Oak Sapling",
                     "Flowering Azalea", "Jungle Sapling", "Oak Sapling", "Spruce Sapling");
 
@@ -1241,9 +1353,9 @@ public class GUI {
         return page;
     }
 
-    public UI.Page settings_bonemealing() {
+    public UI.Page settings_bone_meal() {
 
-        UI.Page page = new UI.Page("Bone Mealing", 36, plugin);
+        UI.Page page = new UI.Page("Bone Meal", 36, plugin);
 
         History history = plugin.getHistory(player);
         history.addPage(page);
@@ -1253,83 +1365,147 @@ public class GUI {
             page.clear();
 
             // content
-            UI.Section content = new UI.Section(3, 1);
+            UI.Section content = new UI.Section(5, 1);
 
             // blocks
             UI.Item blocks = new UI.Item("§eBlocks", Material.DIRT);
-            blocks.addLoreLines("§7Choose the blocks that can be bone mealed", line);
+            blocks.addLoreLines("§7Choose the blocks that bone", "§7meal can be used on", line);
             blocks.addLoreLines("§7Click to view the blocks settings");
-            blocks.onClick(clickType -> open(settings_bonemealing_blocks()));
+            blocks.onClick(clickType -> {
+                open(settings_bone_meal_blocks());
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+            });
             content.setItem(blocks, 0);
+
+            // strength
+            UI.Item strength = new UI.Item("§eStrength", Material.BONE_MEAL);
+            strength.addLoreLines("§7Changes the strength of", "§7bonemeal for all plants", line);
+            strength.addLoreLines("§7Click to change the strength");
+            content.setItem(strength, 2);
 
             // permissions
             UI.Item permissions = new UI.Item("§ePermissions", Material.FILLED_MAP);
             permissions.addLoreLines("§7Set permissions to allow only certain", "§7players to use bone mealing", line);
             permissions.addLoreLine("§7Click to view the permissions");
-            permissions.onClick(clickType -> open(settings_permissions("bonemealing")));
-            content.setItem(permissions, 2);
+            permissions.onClick(clickType -> {
+                open(settings_permissions("bonemealing"));
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+            });
+            content.setItem(permissions, 4);
 
             // footer
             UI.Section footer = new UI.Section(9, 1);
             footer.fill(backgroundItem);
             footer.setItem(getNavigationItem(), 4);
 
-            page.setSection(content, 12);
+            page.setSection(content, 11);
             page.setSection(footer, 27);
         });
 
         return page;
     }
 
-    public UI.Page settings_bonemealing_blocks() {
+    public UI.Page settings_bone_meal_blocks() {
 
-        UI.Page page = new UI.Page("Bone Mealing - Blocks", 54, plugin);
+        UI.Page page = new UI.Page("Bone Meal - Blocks", 54, plugin);
 
         History history = plugin.getHistory(player);
         history.addPage(page);
+
+        AtomicBoolean selection_view = new AtomicBoolean(false);
+        AtomicInteger current_page = new AtomicInteger();
 
         page.onOpen(p -> {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
-            List<String> blocks = List.of("Sugar Cane", "Cactus", "Vine", "Dead Bush", "Nether Wart", "Dirt", "Netherrack",
-                    "Poppy", "Dandelion", "Blue Orchid", "Allium", "Azure Bluet", "Red Tulip", "Orange Tulip", "White Tulip",
-                    "Pink Tulip", "Oxeye Daisy", "Cornflower", "Lily Of The Valley", "Nether Sprouts", "Azalea Leaves");
+            CFC settings = plugin.getCFCSettings();
+
+            List<String> blocks = new ArrayList<>(settings.getConfigurationSection("bonemeal.blocks").getKeys(false));
 
             // content
             UI.Section content = new UI.Section(7, 3);
+            int pageSize = content.getWidth() * content.getHeight();
 
-            blocks.forEach(name -> {
+            for (int i = current_page.get() * pageSize; i < (current_page.get() + 1) * pageSize && i < blocks.size(); i++) {
 
-                Material material = Material.valueOf(name.toUpperCase().replaceAll(" ", "_"));
-                boolean enabled = settings.getBoolean("bonemealing.blocks." + material.name().toLowerCase(), true);
+                String name = blocks.get(i);
+
+                String materialName = name.toUpperCase();
+
+                switch (name) {
+                    case "wheat" -> materialName = "WHEAT_SEEDS";
+                    case "beetroots" -> materialName = "BEETROOT_SEEDS";
+                    case "carrots" -> materialName = "CARROT";
+                    case "potatoes" -> materialName = "POTATO";
+                    case "cocoa" -> materialName = "COCOA_BEANS";
+                    case "melon_stem" -> materialName = "MELON_SEEDS";
+                    case "pumpkin_stem" -> materialName = "PUMPKIN_SEEDS";
+                    case "sweet_berry_bush" -> materialName = "SWEET_BERRIES";
+                }
+
+                boolean enabled = settings.getBoolean("bonemeal.blocks." + name, true);
                 String[] data = getData(enabled);
 
-                UI.Item item = new UI.Item(data[0] + name, material);
-                item.addLoreLines("§7State: " + data[0] + data[1], line);
-                item.addLoreLine("§7Click to " + data[2]);
+                Material material;
+                if (selection_view.get()) {
+                    if (enabled) material = Material.LIME_DYE;
+                    else material = Material.RED_DYE;
+                } else material = Material.valueOf(materialName);
+
+                UI.Item item = new UI.Item("§e" + WordUtils.capitalize(materialName.toLowerCase().replaceAll("_", " ")), material);
+                item.addLoreLines("§7State: " + data[0] + data[1]);
+                item.addLoreLines(line, "§7Click to " + data[2]);
                 item.onClick(clickType -> {
-                    settings.set("bonemealing.blocks." + material.name().toLowerCase(), !enabled);
+                    settings.set("bonemeal.blocks." + name, !enabled);
                     reload();
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume, 0.7F);
                 });
                 content.addItem(item);
-            });
+            }
 
             // footer
             UI.Section footer = new UI.Section(9, 1);
             footer.fill(backgroundItem);
             footer.setItem(getNavigationItem(), 4);
 
+            // previous page
+            if (current_page.get() > 0) {
+                UI.Item previous_page = new UI.Item("§ePrevious Page", Material.ARROW);
+                previous_page.addLoreLines("§7Left-Click to go to the previous page", "§7Shift-Left-Click to go to the first page");
+                previous_page.onClick(clickType -> {
+                    if (clickType == ClickType.LEFT) current_page.getAndDecrement();
+                    else if (clickType == ClickType.SHIFT_LEFT) current_page.set(0);
+                    reload();
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                });
+                footer.setItem(previous_page, 3);
+            }
+
+            // next page
+            if ((current_page.get() + 1) * pageSize < blocks.size()) {
+                UI.Item next_page = new UI.Item("§eNext Page", Material.ARROW);
+                next_page.addLoreLines("§7Left-Click to go to the next page", "§7Shift-Left-Click to go to the last page");
+                next_page.onClick(clickType -> {
+                    if (clickType == ClickType.LEFT) current_page.getAndIncrement();
+                    else if (clickType == ClickType.SHIFT_LEFT)
+                        current_page.set((int) Math.ceil((float) (blocks.size() - 1) / pageSize));
+                    reload();
+                    player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                });
+                footer.setItem(next_page, 5);
+            }
+
             // all on
             UI.Item all_on = new UI.Item("§aAll On", Material.LIME_DYE);
             all_on.addLoreLine("§7Click to turn all blocks on");
             all_on.onClick(clickType -> {
                 blocks.forEach(block -> {
-                    String path = "bonemealing.blocks." + block.toLowerCase().replaceAll(" ", "_");
+                    String path = "bonemeal.blocks." + block.toLowerCase().replaceAll(" ", "_");
                     settings.set(path, true);
                 });
                 reload();
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
             });
             footer.setItem(all_on, 6);
 
@@ -1338,12 +1514,25 @@ public class GUI {
             all_off.addLoreLine("§7Click to turn all blocks off");
             all_off.onClick(clickType -> {
                 blocks.forEach(block -> {
-                    String path = "bonemealing.blocks." + block.toLowerCase().replaceAll(" ", "_");
+                    String path = "bonemeal.blocks." + block.toLowerCase().replaceAll(" ", "_");
                     settings.set(path, false);
                 });
                 reload();
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
             });
             footer.setItem(all_off, 7);
+
+            // toggle view
+            UI.Item toggle_view = new UI.Item("§eToggle View", Material.COMPASS);
+            if (selection_view.get()) toggle_view.addLoreLines("§7View: §6Selection");
+            else toggle_view.addLoreLines("§7View: §6Item");
+            toggle_view.addLoreLines(line, "§7Click to change");
+            toggle_view.onClick(clickType -> {
+                selection_view.set(!selection_view.get());
+                reload();
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+            });
+            footer.setItem(toggle_view, 1);
 
             page.setSection(content, 10);
             page.setSection(footer, 45);
@@ -1404,7 +1593,7 @@ public class GUI {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
             List<String> blocks = List.of("Candle", "Sea Pickle", "Carved Pumpkin", "Jack o Lantern");
 
             // content
@@ -1514,7 +1703,7 @@ public class GUI {
 
             page.clear();
 
-            DataFile settings = plugin.getDataFile("settings");
+            CFC settings = plugin.getCFCSettings();
 
             // content
             UI.Section content = new UI.Section(7, 3);
@@ -1564,7 +1753,7 @@ public class GUI {
 
     public UI.Page settings_watering() {
 
-        UI.Page page = new UI.Page("Watering", 36, plugin);
+        UI.Page page = new UI.Page("Watering", 54, plugin);
 
         History history = plugin.getHistory(player);
         history.addPage(page);
@@ -1574,7 +1763,8 @@ public class GUI {
             page.clear();
 
             // content
-            UI.Section content = new UI.Section(5 ,1);
+            UI.Section content = new UI.Section(3, 1);
+            UI.Section content2 = new UI.Section(7, 1);
 
             // blocks
             UI.Item blocks = new UI.Item("§eBlocks", Material.GRASS_BLOCK);
@@ -1583,26 +1773,48 @@ public class GUI {
             blocks.onClick(clickType -> open(settings_watering_blocks()));
             content.setItem(blocks, 0);
 
-            // range
-            UI.Item range = new UI.Item("§eRange", Material.MAP);
-            range.addLoreLines("§7In a range of 2 blocks of the impact", "§7location blocks can be watered", line);
-            range.addLoreLine("§7Click to change");
-            content.setItem(range, 2);
-
             // permissions
             UI.Item permissions = new UI.Item("§ePermissions", Material.FILLED_MAP);
             permissions.addLoreLines("§7Set permissions to allow only", "§7certain players to water blocks", line);
             permissions.addLoreLine("§7Click to view the permissions");
             permissions.onClick(clickType -> open(settings_permissions("watering")));
-            content.setItem(permissions, 4);
+            content.setItem(permissions, 2);
+
+            CFC settings = plugin.getCFCSettings();
+            int range = settings.getInt("watering.range", 2);
+            int strength = settings.getInt("watering.strength", 1);
+            int duration = settings.getInt("watering.duration", 5);
+            double chance = settings.getDouble("watering.chance", 0.33);
+
+            // range
+            UI.Item rangeItem = new UI.Item("§eRange", Material.FARMLAND);
+            rangeItem.addLoreLines("§7Amount of blocks from center", "§7Range: §6" + range + " blocks", line, "§7Click to change");
+            content2.setItem(rangeItem, 0);
+
+            // duration
+            UI.Item durationItem = new UI.Item("§eDuration", Material.CLOCK);
+            durationItem.addLoreLines("§7Amount of seconds the effect lasts", "§7Duration: §6" + duration + " seconds", line, "§7Click to change");
+            content2.setItem(durationItem, 2);
+
+            // strength
+            UI.Item strengthItem = new UI.Item("§eStrength", Material.NETHERITE_SWORD);
+            strengthItem.addLoreLines("§7Amount of stages the crop grows", "§7Strength: §6" + strength + " stage(s)", line, "§7Click to change");
+            strengthItem.addItemFlags(Arrays.asList(ItemFlag.values()));
+            content2.setItem(strengthItem, 4);
+
+            // chance
+            UI.Item chanceItem = new UI.Item("§eChance", Material.SUNFLOWER);
+            chanceItem.addLoreLines("§7Chance for each block in range to grow", "§7Chance: §6" + (chance * 100) + "%", line, "§7Click to change");
+            content2.setItem(chanceItem, 6);
 
             // footer
             UI.Section footer = new UI.Section(9, 1);
             footer.fill(backgroundItem);
             footer.setItem(getNavigationItem(), 4);
 
-            page.setSection(content, 11);
-            page.setSection(footer, 27);
+            page.setSection(content, 12);
+            page.setSection(content2, 28);
+            page.setSection(footer, 45);
         });
 
         return page;
@@ -1642,7 +1854,7 @@ public class GUI {
             page.clear();
 
             // content
-            UI.Section content = new UI.Section(5 ,1);
+            UI.Section content = new UI.Section(5, 1);
 
             // blocks
             UI.Item blocks = new UI.Item("§eBlocks", Material.GRASS_BLOCK);
@@ -1710,8 +1922,8 @@ public class GUI {
             page.clear();
 
             int currentPage = getCurrentPage(page);
-            DataFile config = plugin.getDataFile("settings");
-            List<String> permissions = new ArrayList<>(config.getStringList(setting + ".permissions"));
+            CFC settings = plugin.getCFCSettings();
+            List<String> permissions = new ArrayList<>(settings.getStringList(setting + ".permissions"));
 
             // content
             UI.Section content = new UI.Section(9, 5);
@@ -1726,7 +1938,7 @@ public class GUI {
                         if (clickType == ClickType.SHIFT_RIGHT)
                             open(confirmation("Do you really want to remove " + permission, ct -> {
                                 permissions.remove(permission);
-                                config.set(setting + ".permissions", permissions);
+                                settings.set(setting + ".permissions", permissions);
                                 history.openPage(1);
                             }));
                         else {
@@ -1741,7 +1953,7 @@ public class GUI {
                                 if (permissions.contains(text)) return AnvilGUI.Response.text("already existing");
                                 permissions.remove(permission);
                                 permissions.add(text);
-                                config.set(setting + ".permissions", permissions);
+                                settings.set(setting + ".permissions", permissions);
                                 return AnvilGUI.Response.close();
                             });
                             builder.open(player);
@@ -1770,7 +1982,7 @@ public class GUI {
             UI.Item delete_all = new UI.Item("§cDelete All", Material.RED_DYE);
             delete_all.addLoreLine("§7Click to delete all permisisons");
             delete_all.onClick(clickType -> open(confirmation("Do you really want to delete all permissions?", ct -> {
-                config.set(setting + ".permissions", new ArrayList<>());
+                settings.set(setting + ".permissions", new ArrayList<>());
                 history.openPage(1);
             })));
             footer.setItem(delete_all, 7);
@@ -1789,7 +2001,7 @@ public class GUI {
                 builder.onComplete((p2, text) -> {
                     if (permissions.contains(text)) return AnvilGUI.Response.text("already existing");
                     permissions.add(text);
-                    config.set(setting + ".permissions", permissions);
+                    settings.set(setting + ".permissions", permissions);
                     return AnvilGUI.Response.close();
                 });
                 builder.open(player);
@@ -1817,16 +2029,28 @@ public class GUI {
             navigation.addLoreLine("§7Middle-click to close");
             navigation.onClick(clickType -> {
                 switch (clickType) {
-                    case RIGHT -> open(history());
-                    case MIDDLE -> player.closeInventory();
-                    default -> history.openPage(1);
+                    case RIGHT -> {
+                        open(history());
+                        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                    }
+                    case MIDDLE -> {
+                        player.closeInventory();
+                        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                    }
+                    default -> {
+                        history.openPage(1);
+                        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+                    }
                 }
             });
         } else {
             navigation.setName("§eClose");
             navigation.clearLore();
             navigation.addLoreLine("§7Click to close");
-            navigation.onClick(clickType -> player.closeInventory());
+            navigation.onClick(clickType -> {
+                player.closeInventory();
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, 1);
+            });
         }
         return navigation;
     }

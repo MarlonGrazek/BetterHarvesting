@@ -1,0 +1,25 @@
+messages:
+  enabled: "%s successfully enabled!"
+  no_permission: "You don't have the permission to do that!"
+gui:
+  settings:
+    start:
+      title: "Settings"
+      item:
+        enabled: "Current: %sOn"
+        disabled: "Current: %sOff"
+        enable: "Click to enable"
+        disable: "Click to disable"
+        customize: "Right-click to customize"
+    harvest:
+      title: "Harvest"
+    shears:
+      title: "Shears"
+    bonemeal:
+      title: "Bone Meal"
+    water:
+      title: "Water"
+    poison:
+      title: "Poison"
+    craft:
+      title: "Craft"

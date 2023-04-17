@@ -1,23 +1,120 @@
 package com.marlongrazek.betterharvesting.events;
 
+import com.google.common.util.concurrent.AtomicDouble;
+import com.marlongrazek.betterharvesting.main.Main;
+import com.marlongrazek.customfileconfiguration.CFC;
+import org.bukkit.Color;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
-import org.bukkit.block.data.type.Sapling;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class EVNwaterPlants implements Listener {
+
+    private final Main plugin;
+
+    public EVNwaterPlants(Main plugin) {
+        this.plugin = plugin;
+    }
 
     @EventHandler
     public void onHit(ProjectileHitEvent e) {
 
-        if (!(e.getEntity() instanceof ThrownPotion)) return;
+        if(!(e.getEntity() instanceof ThrownPotion)) return;
+
+        CFC settings = plugin.getCFCSettings();
+
+        Block block = e.getHitBlock();
+        Block plant = block.getRelative(BlockFace.UP);
+
+        ThrownPotion potion = (ThrownPotion) e.getEntity();
+        boolean is_poison = !potion.getEffects().isEmpty();
+
+        AtomicInteger range = new AtomicInteger(settings.getInt("watering.range", 2));
+        AtomicInteger strength = new AtomicInteger(settings.getInt("watering.strength", 1));
+        AtomicInteger duration = new AtomicInteger(settings.getInt("watering.duration", 5));
+        AtomicDouble chance = new AtomicDouble(settings.getDouble("watering.chance", 0.33));
+
+        if(is_poison) {
+            range.set(settings.getInt("poisoning.range", 2));
+            strength.set(settings.getInt("poisoning.strength", 1));
+            duration.set(settings.getInt("poisoning.duration", 5));
+            chance.set(settings.getDouble("poisoning.chance", 0.33));
+        }
+
+        AtomicInteger current_duration = new AtomicInteger();
+
+        new BukkitRunnable() {
+
+
+            @Override
+            public void run() {
+
+                current_duration.getAndIncrement();
+
+                for(int x = block.getX() - range.get(); x < block.getX() + range.get() + 1; x++) {
+                    for(int z = block.getZ() - range.get(); z < block.getZ() + range.get() + 1; z++) {
+
+                        // not chosen
+                        if(ThreadLocalRandom.current().nextDouble() >= chance.get()) continue;
+
+                        // no ageable
+                        Block selectedBlock = (new Location(plant.getWorld(), x, plant.getY(), z)).getBlock();
+                        if(!(selectedBlock.getBlockData() instanceof Ageable)) continue;
+
+                        Ageable ageable = (Ageable) selectedBlock.getBlockData();
+
+                        // not poisonous
+                        if(!is_poison) {
+
+                            if(!settings.getBoolean("watering.blocks." + selectedBlock.getType().name().toLowerCase())) continue;
+
+                            // max age
+                            if (ageable.getAge() == ageable.getMaximumAge()) continue;
+
+                            ageable.setAge(Math.min(ageable.getMaximumAge(), ageable.getAge() + strength.get()));
+                            selectedBlock.setBlockData(ageable);
+
+                            block.getWorld().spawnParticle(Particle.VILLAGER_HAPPY, selectedBlock.getLocation().add(0.5, 0.2, 0.5), 5, 0.25, 0, 0.25);
+                        }
+
+                        // poisonous
+                        else {
+
+                            if(!settings.getBoolean("poisoning.blocks." + selectedBlock.getType().name().toLowerCase())) continue;
+
+                            // min age
+                            if(ageable.getAge() - strength.get() < 0) {
+                                selectedBlock.setType(Material.AIR);
+                                continue;
+                            }
+
+                            ageable.setAge(ageable.getAge() - strength.get());
+                            selectedBlock.setBlockData(ageable);
+
+                            block.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, selectedBlock.getLocation().add(0.5, 0.2, 0.5),
+                                    5, 0.25, 0, 0.25,new Particle.DustTransition(Color.fromRGB(204, 0, 255),
+                                            Color.fromBGR(136, 0, 255), 1));
+                        }
+                    }
+                }
+
+                if(current_duration.get() == duration.get()) cancel();
+
+            }
+        }.runTaskTimer(plugin, 20, 20);
+
+        /*if (!(e.getEntity() instanceof ThrownPotion)) return;
 
         Block hitblock = e.getHitBlock();
         Block plant = hitblock.getRelative(BlockFace.UP);
@@ -131,6 +228,6 @@ public class EVNwaterPlants implements Listener {
                     plant.setType(Material.AIR);
                 }
             }
-        }
+        }*/
     }
 }

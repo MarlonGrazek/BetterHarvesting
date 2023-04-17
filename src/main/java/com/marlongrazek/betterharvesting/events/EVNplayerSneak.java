@@ -1,7 +1,7 @@
 package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
-import com.marlongrazek.datafile.DataFile;
+import com.marlongrazek.customfileconfiguration.CFC;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -26,18 +26,19 @@ public class EVNplayerSneak implements Listener {
     @EventHandler
     public void onGrow(PlayerToggleSneakEvent e) {
 
+        Player player = e.getPlayer();
+
+        CFC settings = plugin.getCFCSettings();
+        if (!settings.getBoolean("sneaking.enabled", true)) return;
+
+        List<String> permissions = new ArrayList<>(settings.getStringList("sneaking.permissions"));
+        if (!hasPermissionFromList(player, permissions)) return;
+
         if (e.isSneaking()) {
 
             taskid = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
 
-                Player player = e.getPlayer();
                 Location playerLocation = player.getLocation().getBlock().getLocation();
-
-                DataFile settings = plugin.getDataFile("settings");
-                if (!settings.getBoolean("sneaking.enabled", true)) return;
-
-                List<String> permissions = new ArrayList<>(settings.getStringList("sneaking.permissions"));
-                if (!hasPermissionFromList(player, permissions)) return;
 
                 int range = settings.getInt("sneaking.range");
 

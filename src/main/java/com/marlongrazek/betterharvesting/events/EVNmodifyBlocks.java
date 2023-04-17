@@ -1,16 +1,11 @@
 package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
-import com.marlongrazek.datafile.DataFile;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
-import org.bukkit.Sound;
+import com.marlongrazek.customfileconfiguration.CFC;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
-import org.bukkit.block.data.Directional;
-import org.bukkit.block.data.type.Candle;
-import org.bukkit.block.data.type.SeaPickle;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,9 +16,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class EVNmodifyBlocks implements Listener {
 
@@ -36,101 +29,142 @@ public class EVNmodifyBlocks implements Listener {
     @EventHandler
     public void onClick(PlayerInteractEvent e) {
 
+        // check action
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
+        // check hand
+        if (e.getHand() != EquipmentSlot.HAND) return;
+
         Block block = e.getClickedBlock();
+        ItemStack tool = e.getItem();
         Player player = e.getPlayer();
 
-        DataFile settings = plugin.getDataFile("settings");
+        CFC settings = plugin.getCFCSettings();
 
         if (block.getBlockData() instanceof Ageable) {
 
-            boolean enabled = settings.getBoolean("crop_harvesting.enabled", true);
-            boolean no_item_enabled = settings.getBoolean("crop_harvesting.tools.no_tool", true);
-            boolean hoe_enabled = settings.getBoolean("crop_harvesting.tools.hoe", true);
+            boolean enabled = settings.getBoolean("harvesting.enabled", true);
+            boolean requires_hoe = settings.getBoolean("harvesting.requires_tool", true);
+            boolean fortune = settings.getBoolean("harvesting.fortune", true);
+            boolean quick_harvest = settings.getBoolean("harvesting.quick", false);
 
-            boolean fortune_enabled = settings.getBoolean("crop_harvesting.fortune", true);
-
-            List<String> harvesting_permissions = settings.getStringList("crop_harvesting.permissions");
-
-            List<Material> hoes = List.of(Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE, Material.DIAMOND_HOE, Material.NETHERITE_HOE);
-
-            if (e.getHand() != EquipmentSlot.HAND) return;
-
-            // disabled
+            // check feature enabled
             if (!enabled) return;
 
-            if (e.getItem() == null) {
-                if (!no_item_enabled) return;
-            } else if (e.getItem() != null && hoes.contains(e.getItem().getType())) {
-                if (!hoe_enabled) return;
-            } else return;
+            // check crop enabled
+            if (!settings.getBoolean("harvesting.crops." + block.getType().name().toLowerCase(), false)) return;
 
             // no permission
-            if (!hasPermissionFromList(player, harvesting_permissions)) return;
+            if (!settings.getStringList("harvesting.permissions").isEmpty() &&
+                    settings.getStringList("harvesting.permissions").stream().noneMatch(player::hasPermission)) return;
 
-            String clicked;
-            switch (e.getClickedBlock().getType()) {
-                case WHEAT -> clicked = "wheat_seeds";
-                case BEETROOTS -> clicked = "beetroot_seeds";
-                case CARROTS -> clicked = "carrot";
-                case POTATOES -> clicked = "potato";
-                case COCOA -> clicked = "cocoa_beans";
-                case MELON_STEM -> clicked = "melon_seeds";
-                case PUMPKIN_STEM -> clicked = "pumpkin_seeds";
-                case NETHER_WART -> clicked = "nether_wart";
-                default -> {
-                    return;
-                }
-            }
+            // check item
+            List<Material> hoes = List.of(Material.WOODEN_HOE, Material.STONE_HOE, Material.IRON_HOE, Material.GOLDEN_HOE,
+                    Material.DIAMOND_HOE, Material.NETHERITE_HOE);
+            if (requires_hoe && (tool == null || !hoes.contains(tool.getType()))) return;
+            else if (!requires_hoe && tool != null) return;
 
-            if (!settings.getBoolean("crop_harvesting.crops." + clicked, false)) return;
-
+            // check sweetberry
             if (block.getType() == Material.SWEET_BERRY_BUSH) return;
 
+            // check max age
             Ageable crop = (Ageable) e.getClickedBlock().getBlockData();
             if (crop.getAge() != crop.getMaximumAge()) return;
 
             e.setCancelled(true);
 
-            ItemStack tool = e.getItem();
+            // define multiplier
             int multiplier = 1;
-            if (tool != null && fortune_enabled)
+            if (tool != null && fortune)
                 multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
 
-            ArrayList<ItemStack> drops = new ArrayList<>(e.getClickedBlock().getDrops());
-            drops.removeIf(drop -> drop == null || drop.getType() == Material.AIR);
+            if (quick_harvest) {
 
-            boolean removedSeed = false;
-            for (ItemStack drop : drops) {
-                switch (drop.getType()) {
-                    case POTATO, CARROT, BEETROOT_SEEDS, WHEAT_SEEDS, NETHER_WART, COCOA_BEANS, MELON_SEEDS, PUMPKIN_SEEDS -> {
+                List<Block> blocks = getConnectedBlocks(block, 100);
+
+                for (Block b : blocks) {
+
+                    ArrayList<ItemStack> drops = new ArrayList<>(b.getDrops());
+                    drops.removeIf(drop -> drop == null || drop.getType() == Material.AIR);
+
+                    // drop items
+                    boolean removedSeed = false;
+                    for (ItemStack drop : drops) {
+                        if (List.of(Material.POTATO, Material.CARROT, Material.BEETROOT_SEEDS, Material.WHEAT_SEEDS, Material.NETHER_WART,
+                                Material.COCOA_BEANS, Material.MELON_SEEDS, Material.PUMPKIN_SEEDS).contains(drop.getType())) {
+                            if (!removedSeed) {
+                                drop.setAmount(drop.getAmount() - 1);
+                                removedSeed = true;
+                            }
+                        }
+
+                        if (drop == null || drop.getAmount() <= 0 || drop.getType() == Material.AIR) continue;
+                        drop.setAmount(drop.getAmount() * multiplier);
+                        b.getWorld().dropItemNaturally(b.getLocation(), drop);
+                    }
+
+                    Ageable ageable = (Ageable) b.getBlockData();
+                    ageable.setAge(0);
+                    b.setBlockData(ageable);
+
+                    // handle damage
+                    if (player.getGameMode() != GameMode.CREATIVE && tool != null && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
+                        Damageable meta = (Damageable) tool.getItemMeta();
+                        meta.setDamage(meta.getDamage() + 1);
+                        tool.setItemMeta(meta);
+                        if (meta.getDamage() >= tool.getType().getMaxDurability()) {
+                            player.getInventory().removeItem(tool);
+                            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 1);
+                            player.getWorld().spawnParticle(Particle.ITEM_CRACK, player.getLocation().add(player.getLocation().getDirection()).add(0, 1, 0), 10, 0.3, 0.5, 0.3, 0, tool);
+                            break;
+                        }
+                    }
+
+                    player.getWorld().playSound(b.getLocation(), Sound.BLOCK_CROP_BREAK, 0.9F, 1);
+                }
+
+            } else {
+
+                ArrayList<ItemStack> drops = new ArrayList<>(e.getClickedBlock().getDrops());
+                drops.removeIf(drop -> drop == null || drop.getType() == Material.AIR);
+
+                // drop items
+                boolean removedSeed = false;
+                for (ItemStack drop : drops) {
+                    if (List.of(Material.POTATO, Material.CARROT, Material.BEETROOT_SEEDS, Material.WHEAT_SEEDS, Material.NETHER_WART,
+                            Material.COCOA_BEANS, Material.MELON_SEEDS, Material.PUMPKIN_SEEDS).contains(drop.getType())) {
                         if (!removedSeed) {
                             drop.setAmount(drop.getAmount() - 1);
                             removedSeed = true;
                         }
                     }
-                }
 
-                if (drop != null && drop.getAmount() > 0 && drop.getType() != Material.AIR) {
+                    if (drop == null || drop.getAmount() <= 0 || drop.getType() == Material.AIR) continue;
                     drop.setAmount(drop.getAmount() * multiplier);
                     e.getClickedBlock().getWorld().dropItemNaturally(e.getClickedBlock().getLocation(), drop);
                 }
+
+                // aply change
+                crop.setAge(0);
+                block.setBlockData(crop);
+
+                // handle damage
+                if (player.getGameMode() != GameMode.CREATIVE && tool != null && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
+                    Damageable meta = (Damageable) tool.getItemMeta();
+                    meta.setDamage(meta.getDamage() + 1);
+                    tool.setItemMeta(meta);
+                    if (meta.getDamage() >= tool.getType().getMaxDurability()) {
+                        player.getInventory().removeItem(tool);
+                        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 1);
+                        player.getWorld().spawnParticle(Particle.ITEM_CRACK, player.getLocation().add(player.getLocation().getDirection()).add(0, 1, 0), 10, 0.3, 0.5, 0.3, 0, tool);
+                    }
+                }
+
+                player.getWorld().playSound(block.getLocation(), Sound.BLOCK_CROP_BREAK, 0.9F, 1);
             }
-
-            crop.setAge(0);
-            block.setBlockData(crop);
-
-            if (player.getGameMode() != GameMode.CREATIVE && tool != null && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
-                Damageable meta = (Damageable) tool.getItemMeta();
-                meta.setDamage(meta.getDamage() + 1);
-                tool.setItemMeta(meta);
-            }
-
-            player.playSound(player.getLocation(), Sound.BLOCK_CROP_BREAK, 0.9F, 1);
-            return;
         }
 
+        /*
         // feature disabled
         if (!settings.getBoolean("right_clicking.enabled", true)) return;
 
@@ -214,7 +248,7 @@ public class EVNmodifyBlocks implements Listener {
             player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE, 1, 0.8F);
             if (player.getGameMode() != GameMode.CREATIVE || !player.getInventory().contains(new ItemStack(Material.TORCH)))
                 player.getInventory().addItem(new ItemStack(Material.TORCH));
-        }
+        }*/
     }
 
     public int getDropMultiplier(int enchantmentLevel) {
@@ -256,9 +290,35 @@ public class EVNmodifyBlocks implements Listener {
         return randomInt > chance;
     }
 
-    public boolean hasPermissionFromList(Player player, List<String> permissions) {
-        if (permissions.isEmpty()) return true;
-        for (String permission : permissions) if (player.hasPermission(permission)) return true;
+    public List<Block> getConnectedBlocks(Block start, int limit) {
+        List<Block> connectedBlocks = new ArrayList<>();
+        Queue<Block> queue = new LinkedList<>();
+        Set<Block> visited = new HashSet<>();
+        queue.add(start);
+        visited.add(start);
+        Material type = start.getType();
+        BlockFace[] faces = {BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST, BlockFace.NORTH_EAST, BlockFace.NORTH_WEST, BlockFace.SOUTH_EAST, BlockFace.SOUTH_WEST};
+        while (!queue.isEmpty() && connectedBlocks.size() < limit) {
+            Block current = queue.poll();
+            if (isMaxAgeCrop(current)) {
+                connectedBlocks.add(current);
+                for (BlockFace face : faces) {
+                    Block relative = current.getRelative(face);
+                    if (relative.getType() == type && !visited.contains(relative) && isMaxAgeCrop(relative)) {
+                        queue.add(relative);
+                        visited.add(relative);
+                    }
+                }
+            }
+        }
+        return connectedBlocks;
+    }
+
+    private boolean isMaxAgeCrop(Block block) {
+        if (block.getBlockData() instanceof Ageable) {
+            Ageable ageable = (Ageable) block.getBlockData();
+            return ageable.getAge() == ageable.getMaximumAge();
+        }
         return false;
     }
 }

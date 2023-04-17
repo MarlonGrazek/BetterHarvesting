@@ -1,0 +1,25 @@
+messages:
+  enabled: "%s erfolgreich gelanden!"
+  no_permission: "Dafür hast du keine Berechtigung!"
+gui:
+  settings:
+    start:
+      title: "Einstellungen"
+      item:
+        enabled: "Aktuell: %sAn"
+        disabled: "Aktuell: %sAus"
+        enable: "Klicken zum Aktivieren"
+        disable: "Klicken zum Deaktivieren"
+        customize: "Recht-Klicken zum Anpassen"
+    harvest:
+      title: "Ernten"
+    shears:
+      title: "Schere"
+    bonemeal:
+      title: "Knochenmehl"
+    water:
+      title: "Gießen"
+    poison:
+      title: "Vergiften"
+    craft:
+      title: "Craften"

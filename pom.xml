@@ -91,17 +91,12 @@
         <dependency>
             <groupId>com.github.MarlonGrazek</groupId>
             <artifactId>UI</artifactId>
-            <version>7e4888ebf8</version>
+            <version>6ab4109874</version>
         </dependency>
         <dependency>
             <groupId>com.github.MarlonGrazek</groupId>
-            <artifactId>DataFile</artifactId>
-            <version>c39b802b7a</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.MarlonGrazek</groupId>
-            <artifactId>Builder</artifactId>
-            <version>c2183f13c2</version>
+            <artifactId>CustomFileConfiguration</artifactId>
+            <version>e416eda3bf</version>
         </dependency>
         <dependency>
             <groupId>de.jeff_media</groupId>

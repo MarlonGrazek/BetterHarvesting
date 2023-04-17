@@ -1,7 +1,7 @@
 package com.marlongrazek.betterharvesting.utils;
 
 import com.marlongrazek.betterharvesting.main.Main;
-import com.marlongrazek.datafile.DataFile;
+import com.marlongrazek.customfileconfiguration.CFC;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -28,7 +28,7 @@ public class PluginCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String lbl, String[] args) {
 
         if(!commandInfo.permission().isEmpty() && !sender.hasPermission(commandInfo.permission())) {
-            DataFile config = plugin.getDataFile("config");
+            CFC config = plugin.getCFCConfig();
             String prefix = config.getString("prefix");
             String no_permission = config.getString("no_permission");
             sender.sendMessage(prefix + " §7| " + no_permission);

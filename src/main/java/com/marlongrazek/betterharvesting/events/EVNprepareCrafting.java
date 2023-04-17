@@ -1,7 +1,7 @@
 package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
-import com.marlongrazek.datafile.DataFile;
+import com.marlongrazek.customfileconfiguration.CFC;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.event.EventHandler;
@@ -28,7 +28,7 @@ public class EVNprepareCrafting implements Listener {
 
         if (recipe == null) return;
 
-        DataFile config = plugin.getDataFile("settings");
+        CFC config = plugin.getCFCSettings();
         String result = recipe.getResult().getType().name().toLowerCase();
 
         // no custom recipe

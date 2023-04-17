@@ -1,12 +1,11 @@
 package com.marlongrazek.betterharvesting.events;
 
 import com.marlongrazek.betterharvesting.main.Main;
-import com.marlongrazek.datafile.DataFile;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
-import org.bukkit.Sound;
+import com.marlongrazek.customfileconfiguration.CFC;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Ageable;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -83,49 +82,85 @@ public class EVNshearPlants implements Listener {
         if (e.getHand() != EquipmentSlot.HAND) return;
 
         // feature disabled
-        DataFile settings = plugin.getDataFile("settings");
-        if (!settings.getBoolean("shearing.enabled", true)) return;
+        CFC settings = plugin.getCFCSettings();
+        if (!settings.getBoolean("shears.enabled", true)) return;
 
         // no permission
-        List<String> permissions = new ArrayList<>(settings.getStringList("shearing.permissions"));
+        List<String> permissions = new ArrayList<>(settings.getStringList("shears.permissions"));
         if (!hasPermissionFromList(e.getPlayer(), permissions)) return;
 
         // block disabled
         String item = e.getClickedBlock().getType().name().toLowerCase();
-        if (!settings.getBoolean("shearing.blocks." + item, false)) return;
+        if (!settings.getBoolean("shears.blocks." + item, false)) return;
 
-        e.setCancelled(true);
-
-        boolean fortune_enabled = settings.getBoolean("shearing.fortune");
+        boolean fortune_enabled = settings.getBoolean("shears.fortune");
 
         Player player = e.getPlayer();
         Block block = e.getClickedBlock();
         ItemStack tool = e.getItem();
 
-        List<Material> shearableBlocks = new ArrayList<>();
-        for (ShearableBlock shearableBlock : ShearableBlock.values()) shearableBlocks.add(shearableBlock.getMaterial());
+        if(List.of(Material.WHEAT, Material.BEETROOTS, Material.CARROTS, Material.POTATOES, Material.COCOA,
+                Material.MELON_STEM, Material.PUMPKIN_STEM,
+                Material.NETHER_WART).contains(block.getType())) {
 
-        if (!shearableBlocks.contains(block.getType())) return;
+            Ageable ageable = (Ageable) block.getBlockData();
+            if(ageable.getAge() < 1) return;
 
-        ShearableBlock shearableBlock = ShearableBlock.valueOf(block.getType().name());
+            e.setCancelled(true);
 
-        int multiplier = 1;
-        if (fortune_enabled) multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
+            ageable.setAge(ageable.getAge() - 1);
+            block.setBlockData(ageable);
+            player.playSound(block.getLocation(), Sound.ENTITY_SHEEP_SHEAR, 1, 1);
+            player.spawnParticle(Particle.DUST_COLOR_TRANSITION, block.getLocation().add(0.5,0.5,0.5),
+                    10, 0.25, 0.25,0.25, new Particle.DustTransition(Color.GREEN, Color.YELLOW, 1));
 
-        Block belowBlock = block.getRelative(BlockFace.DOWN);
-        if (isTallPlant(block, belowBlock)) belowBlock.setType(shearableBlock.getNewMaterial());
-        else block.setType(shearableBlock.getNewMaterial());
+            if (player.getGameMode() != GameMode.CREATIVE && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
+                Damageable meta = (Damageable) tool.getItemMeta();
+                meta.setDamage(meta.getDamage() + 1);
+                tool.setItemMeta(meta);
+                if (meta.getDamage() >= tool.getType().getMaxDurability()) {
+                    player.getInventory().removeItem(tool);
+                    player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 1);
+                    player.getWorld().spawnParticle(Particle.ITEM_CRACK, player.getLocation().add(player.getLocation().getDirection()).add(0, 1, 0), 10, 0.3, 0.5, 0.3, 0, tool);
+                }
+            }
 
-        for (ItemStack drop : shearableBlock.getDrops()) {
-            drop.setAmount(drop.getAmount() * multiplier);
-            block.getWorld().dropItemNaturally(block.getLocation(), drop);
-        }
-        player.playSound(block.getLocation(), Sound.ENTITY_SHEEP_SHEAR, 1, 1);
+        } else {
 
-        if (player.getGameMode() != GameMode.CREATIVE && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
-            Damageable meta = (Damageable) tool.getItemMeta();
-            meta.setDamage(meta.getDamage() + 1);
-            tool.setItemMeta(meta);
+            List<Material> shearableBlocks = new ArrayList<>();
+            for (ShearableBlock shearableBlock : ShearableBlock.values())
+                shearableBlocks.add(shearableBlock.getMaterial());
+
+            if (!shearableBlocks.contains(block.getType())) return;
+
+            e.setCancelled(true);
+
+            ShearableBlock shearableBlock = ShearableBlock.valueOf(block.getType().name());
+
+            int multiplier = 1;
+            if (fortune_enabled)
+                multiplier = getDropMultiplier(tool.getEnchantmentLevel(Enchantment.LOOT_BONUS_BLOCKS));
+
+            Block belowBlock = block.getRelative(BlockFace.DOWN);
+            if (isTallPlant(block, belowBlock)) belowBlock.setType(shearableBlock.getNewMaterial());
+            else block.setType(shearableBlock.getNewMaterial());
+
+            for (ItemStack drop : shearableBlock.getDrops()) {
+                drop.setAmount(drop.getAmount() * multiplier);
+                block.getWorld().dropItemNaturally(block.getLocation(), drop);
+            }
+            player.playSound(block.getLocation(), Sound.ENTITY_SHEEP_SHEAR, 1, 1);
+
+            if (player.getGameMode() != GameMode.CREATIVE && damageTool(tool.getEnchantmentLevel(Enchantment.DURABILITY))) {
+                Damageable meta = (Damageable) tool.getItemMeta();
+                meta.setDamage(meta.getDamage() + 1);
+                tool.setItemMeta(meta);
+                if (meta.getDamage() >= tool.getType().getMaxDurability()) {
+                    player.getInventory().removeItem(tool);
+                    player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 1);
+                    player.getWorld().spawnParticle(Particle.ITEM_CRACK, player.getLocation().add(player.getLocation().getDirection()).add(0, 1, 0), 10, 0.3, 0.5, 0.3, 0, tool);
+                }
+            }
         }
     }
 
